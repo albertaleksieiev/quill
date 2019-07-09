@@ -25,7 +25,11 @@ class Selection {
     this.cursor = Parchment.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
-    this.handleComposition();
+
+    if (typeof window.IS_ANDROID === 'undefined' || !window.IS_ANDROID) {
+      this.handleComposition();
+    }
+
     this.handleDragging();
     this.emitter.listenDOM('selectionchange', document, () => {
       if (!this.mouseDown) {
