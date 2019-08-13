@@ -95,14 +95,21 @@ class Keyboard extends Module {
         suffix: suffixText
       };
 
-      // It makes possible to skip all key bindings for custom blots, i.e. fully html embed
-      let bindingToDiscardDefaultBindings = (this.bindings[-1] || []);
-      let discarded = bindingToDiscardDefaultBindings.some(function (binding) {
-          return binding.handler.call(this, range, curContext) !== true
-      });
-      if (discarded) {
-          return;
+      let selection = document.getSelection();
+      if (selection) {
+        let domNode = selection.baseNode;
+        while (domNode != null) {
+          let quillNode = Quill.find(domNode);
+          if (quillNode) {
+            if (quillNode.disableDefaultKeyListener && quillNode.disableDefaultKeyListener()) {
+              return
+            }
+            break
+          }
+          domNode = domNode.parentElement;
+        }
       }
+
 
       let prevented = bindings.some((binding) => {
         if (binding.collapsed != null && binding.collapsed !== curContext.collapsed) return false;

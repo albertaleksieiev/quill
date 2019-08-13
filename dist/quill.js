@@ -4598,13 +4598,19 @@ var Keyboard = function (_Module) {
           suffix: suffixText
         };
 
-        // It makes possible to skip all key bindings for custom blots, i.e. fully html embed
-        var bindingToDiscardDefaultBindings = _this2.bindings[-1] || [];
-        var discarded = bindingToDiscardDefaultBindings.some(function (binding) {
-          return binding.handler.call(this, range, curContext) !== true;
-        });
-        if (discarded) {
-          return;
+        var selection = document.getSelection();
+        if (selection) {
+          var domNode = selection.baseNode;
+          while (domNode != null) {
+            var quillNode = _quill2.default.find(domNode);
+            if (quillNode) {
+              if (quillNode.disableDefaultKeyListener && quillNode.disableDefaultKeyListener()) {
+                return;
+              }
+              break;
+            }
+            domNode = domNode.parentElement;
+          }
         }
 
         var prevented = bindings.some(function (binding) {
