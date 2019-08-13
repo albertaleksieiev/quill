@@ -4597,6 +4597,22 @@ var Keyboard = function (_Module) {
           prefix: prefixText,
           suffix: suffixText
         };
+
+        var selection = document.getSelection();
+        if (selection) {
+          var domNode = selection.baseNode;
+          while (domNode != null) {
+            var quillNode = _quill2.default.find(domNode);
+            if (quillNode) {
+              if (quillNode.disableDefaultKeyListener && quillNode.disableDefaultKeyListener()) {
+                return;
+              }
+              break;
+            }
+            domNode = domNode.parentElement;
+          }
+        }
+
         var prevented = bindings.some(function (binding) {
           if (binding.collapsed != null && binding.collapsed !== curContext.collapsed) return false;
           if (binding.empty != null && binding.empty !== curContext.empty) return false;

@@ -94,6 +94,23 @@ class Keyboard extends Module {
         prefix: prefixText,
         suffix: suffixText
       };
+
+      let selection = document.getSelection();
+      if (selection) {
+        let domNode = selection.baseNode;
+        while (domNode != null) {
+          let quillNode = Quill.find(domNode);
+          if (quillNode) {
+            if (quillNode.disableDefaultKeyListener && quillNode.disableDefaultKeyListener()) {
+              return
+            }
+            break
+          }
+          domNode = domNode.parentElement;
+        }
+      }
+
+
       let prevented = bindings.some((binding) => {
         if (binding.collapsed != null && binding.collapsed !== curContext.collapsed) return false;
         if (binding.empty != null && binding.empty !== curContext.empty) return false;
