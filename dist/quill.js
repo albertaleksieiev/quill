@@ -997,7 +997,7 @@ function bubbleFormats(blot) {
 
   if (blot == null) return formats;
   if (typeof blot.formats === 'function') {
-    formats = (0, _extend2.default)(formats, blot.formats());
+    formats = (0, _extend2.default)(blot.formats(), formats);
   }
   if (blot.parent == null || blot.parent.blotName == 'scroll' || blot.parent.statics.scope !== blot.statics.scope) {
     return formats;
