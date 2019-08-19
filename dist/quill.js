@@ -9622,14 +9622,7 @@ Toolbar.DEFAULTS = {
       this.quill.format('direction', value, _quill2.default.sources.USER);
     },
     indent: function indent(value) {
-      var range = this.quill.getSelection();
-      var formats = this.quill.getFormat(range);
-      var indent = parseInt(formats.indent || 0);
-      if (value === '+1' || value === '-1') {
-        var modifier = value === '+1' ? 1 : -1;
-        if (formats.direction === 'rtl') modifier *= -1;
-        this.quill.format('indent', indent + modifier, _quill2.default.sources.USER);
-      }
+      this.quill.format('indent', value, _quill2.default.sources.USER);
     },
     link: function link(value) {
       if (value === true) {
