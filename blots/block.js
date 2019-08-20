@@ -162,7 +162,7 @@ Block.allowedChildren = [Inline, Parchment.Embed, TextBlot];
 function bubbleFormats(blot, formats = {}) {
   if (blot == null) return formats;
   if (typeof blot.formats === 'function') {
-    formats = extend(formats, blot.formats());
+    formats = extend(blot.formats(), formats);
   }
   if (blot.parent == null || blot.parent.blotName == 'scroll' || blot.parent.statics.scope !== blot.statics.scope) {
     return formats;
