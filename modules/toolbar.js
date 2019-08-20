@@ -226,14 +226,7 @@ Toolbar.DEFAULTS = {
       this.quill.format('direction', value, Quill.sources.USER);
     },
     indent: function(value) {
-      let range = this.quill.getSelection();
-      let formats = this.quill.getFormat(range);
-      let indent = parseInt(formats.indent || 0);
-      if (value === '+1' || value === '-1') {
-        let modifier = (value === '+1') ? 1 : -1;
-        if (formats.direction === 'rtl') modifier *= -1;
-        this.quill.format('indent', indent + modifier, Quill.sources.USER);
-      }
+      this.quill.format('indent', value, Quill.sources.USER);
     },
     link: function(value) {
       if (value === true) {
