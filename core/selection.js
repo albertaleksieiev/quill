@@ -43,14 +43,19 @@ class Selection {
     });
     this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, () => {
       if (!this.hasFocus()) return;
-      let native = this.getNativeRange();
-      if (native == null) return;
-      if (native.start.node === this.cursor.textNode) return;  // cursor.restore() will handle
+      let [quillSelection, nativeSelection] = this.getRange();
+      if (nativeSelection == null) return;
+      if (nativeSelection.start.node === this.cursor.textNode) return;  // cursor.restore() will handle
       // TODO unclear if this has negative side effects
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
-        try {
-          this.setNativeRange(native.start.node, native.start.offset, native.end.node, native.end.offset);
-        } catch (ignored) {}
+          // Native selection is no longer valid can't restore it - use quill selection fallback
+        if (nativeSelection.start.node.parentNode == null) {
+            this.setRange(quillSelection)
+        } else {
+          try {
+            this.setNativeRange(nativeSelection.start.node, nativeSelection.start.offset, nativeSelection.end.node, nativeSelection.end.offset);
+          } catch (ignored) {}
+        }
       });
     });
     this.emitter.on(Emitter.events.SCROLL_OPTIMIZE, (mutations, context) => {

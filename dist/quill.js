@@ -2869,14 +2869,24 @@ var Selection = function () {
     });
     this.emitter.on(_emitter4.default.events.SCROLL_BEFORE_UPDATE, function () {
       if (!_this.hasFocus()) return;
-      var native = _this.getNativeRange();
-      if (native == null) return;
-      if (native.start.node === _this.cursor.textNode) return; // cursor.restore() will handle
+
+      var _getRange = _this.getRange(),
+          _getRange2 = _slicedToArray(_getRange, 2),
+          quillSelection = _getRange2[0],
+          nativeSelection = _getRange2[1];
+
+      if (nativeSelection == null) return;
+      if (nativeSelection.start.node === _this.cursor.textNode) return; // cursor.restore() will handle
       // TODO unclear if this has negative side effects
       _this.emitter.once(_emitter4.default.events.SCROLL_UPDATE, function () {
-        try {
-          _this.setNativeRange(native.start.node, native.start.offset, native.end.node, native.end.offset);
-        } catch (ignored) {}
+        // Native selection is no longer valid can't restore it - use quill selection fallback
+        if (nativeSelection.start.node.parentNode == null) {
+          _this.setRange(quillSelection);
+        } else {
+          try {
+            _this.setNativeRange(nativeSelection.start.node, nativeSelection.start.offset, nativeSelection.end.node, nativeSelection.end.offset);
+          } catch (ignored) {}
+        }
       });
     });
     this.emitter.on(_emitter4.default.events.SCROLL_OPTIMIZE, function (mutations, context) {
@@ -3230,10 +3240,10 @@ var Selection = function () {
 
       var oldRange = this.lastRange;
 
-      var _getRange = this.getRange(),
-          _getRange2 = _slicedToArray(_getRange, 2),
-          lastRange = _getRange2[0],
-          nativeRange = _getRange2[1];
+      var _getRange3 = this.getRange(),
+          _getRange4 = _slicedToArray(_getRange3, 2),
+          lastRange = _getRange4[0],
+          nativeRange = _getRange4[1];
 
       this.lastRange = lastRange;
       if (this.lastRange != null) {
