@@ -10168,6 +10168,8 @@ var _snow = __webpack_require__(62);
 
 var _snow2 = _interopRequireDefault(_snow);
 
+var _block = __webpack_require__(4);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 _core2.default.register({
@@ -10227,7 +10229,10 @@ _core2.default.register({
   'ui/picker': _picker2.default,
   'ui/icon-picker': _iconPicker2.default,
   'ui/color-picker': _colorPicker2.default,
-  'ui/tooltip': _tooltip2.default
+  'ui/tooltip': _tooltip2.default,
+
+  'functions/bubbleFormats': _block.bubbleFormats
+
 }, true);
 
 exports.default = _core2.default;
