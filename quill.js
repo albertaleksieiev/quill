@@ -38,6 +38,7 @@ import Tooltip from './ui/tooltip';
 import BubbleTheme from './themes/bubble';
 import SnowTheme from './themes/snow';
 
+import { bubbleFormats } from './blots/block';
 
 Quill.register({
   'attributors/attribute/direction': DirectionAttribute,
@@ -97,7 +98,10 @@ Quill.register({
   'ui/picker': Picker,
   'ui/icon-picker': IconPicker,
   'ui/color-picker': ColorPicker,
-  'ui/tooltip': Tooltip
+  'ui/tooltip': Tooltip,
+
+  'functions/bubbleFormats': bubbleFormats
+
 }, true);
 
 
