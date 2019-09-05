@@ -4865,7 +4865,7 @@ Keyboard.DEFAULTS = {
       key: ' ',
       collapsed: true,
       format: { list: false },
-      prefix: /^\s*?(\d+\.|-|\*|\[ ?\]|\[x\])$/,
+      prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function handler(range, context) {
         var length = context.prefix.length;
 

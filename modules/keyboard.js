@@ -267,7 +267,7 @@ Keyboard.DEFAULTS = {
       key: ' ',
       collapsed: true,
       format: { list: false },
-      prefix: /^\s*?(\d+\.|-|\*|\[ ?\]|\[x\])$/,
+      prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function(range, context) {
         let length = context.prefix.length;
         let [line, offset] = this.quill.getLine(range.index);
