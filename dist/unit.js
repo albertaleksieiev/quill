@@ -4738,9 +4738,9 @@ Keyboard.DEFAULTS = {
       format: ['list'],
       empty: true,
       handler: function handler(range, context) {
-        this.quill.format('list', false, _quill2.default.sources.USER);
-        if (context.format.indent) {
-          this.quill.format('indent', false, _quill2.default.sources.USER);
+        this.quill.format('indent', "-1", _quill2.default.sources.USER);
+        if (context.format.indent == null || context.format.indent == 0) {
+          this.quill.format('list', false, _quill2.default.sources.USER);
         }
       }
     },
