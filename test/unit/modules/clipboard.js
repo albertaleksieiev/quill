@@ -20,6 +20,17 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('paste list', function(done) {
+      this.quill.setContents(new Delta().insert("AA"));
+      this.quill.setSelection(1, 0)
+      this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
+      this.quill.clipboard.onPaste({});
+      setTimeout(() => {
+        expect(this.quill.getContents()).toEqual(new Delta().insert("A\nB").insert("\n", {list:"bullet"}).insert("A\n"));
+        done();
+      }, 2);
+    });
+
     it('selection-change', function(done) {
       let handler = {
         change: function() {}
