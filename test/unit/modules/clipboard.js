@@ -20,6 +20,17 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('paste in Bold', function(done) {
+      this.quill.setContents(new Delta().insert("AA", {bold: true}));
+      this.quill.setSelection(1, 0)
+      this.quill.clipboard.container.innerHTML = 'B';
+      this.quill.clipboard.onPaste({});
+      setTimeout(() => {
+        expect(this.quill.getContents()).toEqual(new Delta().insert("ABA", {bold: true}).insert("\n"));
+        done();
+      }, 2);
+    });
+
     it('paste list', function(done) {
       this.quill.setContents(new Delta().insert("AA"));
       this.quill.setSelection(1, 0)

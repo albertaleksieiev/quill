@@ -116,6 +116,7 @@ class Clipboard extends Module {
       if (this.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
         pasteDelta = new Delta().insert("\n").concat(pasteDelta);
       }
+      applyFormatToDelta(pasteDelta, this.quill.getFormat(range.index))
       delta = delta.concat(pasteDelta).delete(range.length);
       this.quill.updateContents(delta, Quill.sources.USER);
       // range.length contributes to delta.length()
@@ -367,6 +368,20 @@ function matchText(node, delta) {
     }
   }
   return delta.insert(text);
+}
+
+function applyFormatToDelta(delta, format) {
+  for (let op of delta.ops) {
+    if (op.attributes == null){
+      op.attributes = format;
+    } else {
+      Object.keys(format).forEach(function (name) {
+        if (op.attributes[name] == null) {
+          op.attributes[name] = format[name];
+        }
+      });
+    }
+  }
 }
 
 
