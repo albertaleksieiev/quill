@@ -293,6 +293,13 @@ Keyboard.DEFAULTS = {
                                .retain(line.length() - 2 - offset)
                                .retain(1, { list: value });
         this.quill.updateContents(delta, Quill.sources.USER);
+        Object.keys(context.format).forEach((name) => {
+          if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
+            return;
+          }
+          this.quill.format(name, context.format[name]);
+        });
+
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, Quill.sources.SILENT);
       }
