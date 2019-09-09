@@ -225,9 +225,9 @@ Keyboard.DEFAULTS = {
       format: ['list'],
       empty: true,
       handler: function(range, context) {
-        this.quill.format('list', false, Quill.sources.USER);
-        if (context.format.indent) {
-          this.quill.format('indent', false, Quill.sources.USER);
+        this.quill.format('indent', "-1", Quill.sources.USER);
+        if (context.format.indent == null || context.format.indent == 0) {
+          this.quill.format('list', false, Quill.sources.USER);
         }
       }
     },
