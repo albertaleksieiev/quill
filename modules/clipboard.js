@@ -12,6 +12,7 @@ import { ColorStyle } from '../formats/color';
 import { DirectionAttribute, DirectionStyle } from '../formats/direction';
 import { FontStyle } from '../formats/font';
 import { SizeStyle } from '../formats/size';
+import List from '../formats/list';
 
 let debug = logger('quill:clipboard');
 
@@ -111,7 +112,12 @@ class Clipboard extends Module {
     this.container.focus();
     this.quill.selection.update(Quill.sources.SILENT);
     setTimeout(() => {
-      delta = delta.concat(this.convert()).delete(range.length);
+      let pasteDelta = this.convert();
+      if (this.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
+        pasteDelta = new Delta().insert("\n").concat(pasteDelta);
+      }
+      applyFormatToDelta(pasteDelta, this.quill.getFormat(range.index))
+      delta = delta.concat(pasteDelta).delete(range.length);
       this.quill.updateContents(delta, Quill.sources.USER);
       // range.length contributes to delta.length()
       this.quill.setSelection(delta.length() - range.length, Quill.sources.SILENT);
@@ -141,6 +147,18 @@ class Clipboard extends Module {
       }
     });
     return [elementMatchers, textMatchers];
+  }
+
+  shouldAddNewlineBeforePaste(pasteDelta, index) {
+    if (pasteDelta.ops.length == 0 || pasteDelta.ops[0].attributes == null || pasteDelta.ops[0].attributes[List.blotName] == null) {
+      return false;
+    }
+    if (index == 0) {
+      return false;
+    }
+    let previousChar = this.quill.getText(index - 1, 1);
+
+    return previousChar != "\n";
   }
 }
 Clipboard.DEFAULTS = {
@@ -350,6 +368,20 @@ function matchText(node, delta) {
     }
   }
   return delta.insert(text);
+}
+
+function applyFormatToDelta(delta, format) {
+  for (let op of delta.ops) {
+    if (op.attributes == null){
+      op.attributes = format;
+    } else {
+      Object.keys(format).forEach(function (name) {
+        if (op.attributes[name] == null) {
+          op.attributes[name] = format[name];
+        }
+      });
+    }
+  }
 }
 
 

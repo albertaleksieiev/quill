@@ -23,7 +23,7 @@ module.exports = function(config) {
     colors: true,
     autoWatch: false,
     singleRun: true,
-    browsers: ['Chrome'],
+    browsers: ['Safari'],
 
     client: {
       useIframe: false
