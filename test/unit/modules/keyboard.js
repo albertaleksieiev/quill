@@ -1,4 +1,6 @@
 import Keyboard, { SHORTKEY } from '../../../modules/keyboard';
+import Quill from '../../../core/quill';
+import Delta from 'quill-delta';
 
 
 describe('Keyboard', function() {
@@ -107,6 +109,20 @@ describe('Keyboard', function() {
         altKey: false,
         [SHORTKEY]: true
       }, binding)).toBe(true);
+    });
+
+    it("List autostart", function() {
+        let originalDelta = new Delta().insert('1.', { bold: true });
+        let expectedDeltaAfterInput = new Delta().insert('A', { bold: true }).insert('\n', { list: "ordered" });
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 32 }))
+        quill.insertText(quill.getLength() - 1, "A")
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+
     });
   });
 });
