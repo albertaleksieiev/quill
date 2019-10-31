@@ -9791,6 +9791,10 @@ var Clipboard = function (_Module) {
         }
       } else {
         var paste = this.convert(html);
+        if (this.shouldAddNewlineBeforePaste(paste, index)) {
+          paste = new _quillDelta2.default().insert("\n").concat(paste);
+        }
+        applyFormatToDelta(paste, this.quill.getFormat(index));
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
@@ -15079,40 +15083,51 @@ describe('Clipboard', function () {
       this.quill.setSelection(2, 5);
     });
 
-    it('paste', function (done) {
+    it('dangerousPasteSavesFormatting', function (done) {
       var _this = this;
+
+      this.quill = this.initialize(_core2.default, '<strong>0123</strong>');
+      this.quill.clipboard.dangerouslyPasteHTML(2, "!");
+      setTimeout(function () {
+        expect(_this.quill.root).toEqualHTML('<p><strong>01!23</strong></p>');
+        done();
+      }, 2);
+    });
+
+    it('paste', function (done) {
+      var _this2 = this;
 
       this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
-        expect(_this.quill.getSelection()).toEqual(new _selection.Range(3));
+        expect(_this2.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
+        expect(_this2.quill.getSelection()).toEqual(new _selection.Range(3));
         done();
       }, 2);
     });
 
     it('paste in Bold', function (done) {
-      var _this2 = this;
+      var _this3 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA", { bold: true }));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = 'B';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this2.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
+        expect(_this3.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
         done();
       }, 2);
     });
 
     it('paste list', function (done) {
-      var _this3 = this;
+      var _this4 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA"));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this3.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
+        expect(_this4.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
         done();
       }, 2);
     });
