@@ -102,7 +102,11 @@ class Clipboard extends Module {
         this.quill.setSelection(0, Quill.sources.SILENT);
       }
     } else {
-      let paste = this.convert(html);
+      var paste = this.convert(html);
+      if (this.shouldAddNewlineBeforePaste(paste, index)) {
+        paste = new Delta().insert("\n").concat(paste);
+      }
+      applyFormatToDelta(paste, this.quill.getFormat(index))
       this.quill.updateContents(new Delta().retain(index).concat(paste), source);
       if (this.quill.hasFocus()) {
         this.quill.setSelection(index + paste.length(), Quill.sources.SILENT);

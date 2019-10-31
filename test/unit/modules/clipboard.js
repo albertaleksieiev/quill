@@ -10,6 +10,15 @@ describe('Clipboard', function() {
       this.quill.setSelection(2, 5);
     });
 
+    it('dangerousPasteSavesFormatting', function(done) {
+      this.quill = this.initialize(Quill, '<strong>0123</strong>');
+      this.quill.clipboard.dangerouslyPasteHTML(2, "!")
+      setTimeout(() => {
+        expect(this.quill.root).toEqualHTML('<p><strong>01!23</strong></p>');
+        done();
+      }, 2);
+    });
+
     it('paste', function(done) {
       this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
       this.quill.clipboard.onPaste({});

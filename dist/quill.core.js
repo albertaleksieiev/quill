@@ -9072,6 +9072,10 @@ var Clipboard = function (_Module) {
         }
       } else {
         var paste = this.convert(html);
+        if (this.shouldAddNewlineBeforePaste(paste, index)) {
+          paste = new _quillDelta2.default().insert("\n").concat(paste);
+        }
+        applyFormatToDelta(paste, this.quill.getFormat(index));
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
