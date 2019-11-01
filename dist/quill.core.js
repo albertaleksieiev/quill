@@ -9036,7 +9036,7 @@ var Clipboard = function (_Module) {
     key: 'convert',
     value: function convert(html) {
       if (typeof html === 'string') {
-        this.container.innerHTML = html.replace(/\>\r?\n +\</g, '><'); // Remove spaces between tags
+        this.container.innerHTML = html.replace(/\>\r?\n *\</g, '><'); // Remove spaces between tags
         return this.convert();
       }
       var formats = this.quill.getFormat(this.quill.selection.savedRange.index);
