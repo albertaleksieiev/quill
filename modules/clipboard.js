@@ -75,7 +75,7 @@ class Clipboard extends Module {
 
   convert(html) {
     if (typeof html === 'string') {
-      this.container.innerHTML = html.replace(/\>\r?\n +\</g, '><'); // Remove spaces between tags
+      this.container.innerHTML = html.replace(/\>\r?\n *\</g, '><'); // Remove spaces between tags
       return this.convert();
     }
     const formats = this.quill.getFormat(this.quill.selection.savedRange.index);

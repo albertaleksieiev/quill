@@ -19,6 +19,15 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('dangerousPasteWithNewlines', function(done) {
+      this.quill = this.initialize(Quill, '');
+      this.quill.clipboard.dangerouslyPasteHTML(0, '<strike>123</strike>\n<blockquote type="cite">456</blockquote>');
+      setTimeout(() => {
+        expect(this.quill.root).toEqualHTML('<p>123</p><blockquote>456</blockquote><p><br></p>');
+        done();
+      }, 2);
+    });
+
     it('paste', function(done) {
       this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
       this.quill.clipboard.onPaste({});
