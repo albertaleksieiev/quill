@@ -116,6 +116,7 @@ class Clipboard extends Module {
 
   onPaste(e) {
     if (e.defaultPrevented || !this.quill.isEnabled()) return;
+    if (e.target != null && e.target.tagName == "INPUT") return; // Disab;e Quill paste when inside of input(i.e. plecaholder)
     let range = this.quill.getSelection();
     let delta = new Delta().retain(range.index);
     let scrollTop = this.quill.scrollingContainer.scrollTop;

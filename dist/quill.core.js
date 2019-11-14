@@ -9088,6 +9088,7 @@ var Clipboard = function (_Module) {
       var _this2 = this;
 
       if (e.defaultPrevented || !this.quill.isEnabled()) return;
+      if (e.target != null && e.target.tagName == "INPUT") return; // Disab;e Quill paste when inside of input(i.e. plecaholder)
       var range = this.quill.getSelection();
       var delta = new _quillDelta2.default().retain(range.index);
       var scrollTop = this.quill.scrollingContainer.scrollTop;
