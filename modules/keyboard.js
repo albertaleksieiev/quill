@@ -190,9 +190,11 @@ Keyboard.DEFAULTS = {
       offset: 0,
       handler: function(range, context) {
         if (context.format.indent != null) {
-          this.quill.format('indent', '-1', Quill.sources.USER);
+          this.quill.format('indent', null, Quill.sources.USER);
+          return true
         } else if (context.format.list != null) {
-          this.quill.format('list', false, Quill.sources.USER);
+          this.quill.format('list', null, Quill.sources.USER);
+          return true
         }
       }
     },

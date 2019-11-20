@@ -1,4 +1,5 @@
 import Keyboard, { SHORTKEY } from '../../../modules/keyboard';
+import { Range } from '../../../core/selection';
 import Quill from '../../../core/quill';
 import Delta from 'quill-delta';
 
@@ -111,7 +112,7 @@ describe('Keyboard', function() {
       }, binding)).toBe(true);
     });
 
-    it("List autostart", function() {
+    it("Preserve format on list autostart", function() {
         let originalDelta = new Delta().insert('1.', { bold: true });
         let expectedDeltaAfterInput = new Delta().insert('A', { bold: true }).insert('\n', { list: "ordered" });
 
@@ -122,6 +123,40 @@ describe('Keyboard', function() {
         quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 32 }))
         quill.insertText(quill.getLength() - 1, "A")
         expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+
+    });
+
+    it("Delete list line", function() {
+        let originalDelta = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" })
+                                        .insert('B', { bold: true })
+                                        .insert('\n', { list: "ordered" });
+        let expectedDeltaAfterInput = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" });
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        expect(quill.getSelection()).toEqual(new Range(1, 0));
+
+    });
+    it("Delete first and only list line", function() {
+        let originalDelta = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" });
+        let expectedDeltaAfterInput = new Delta().insert('\n');
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        expect(quill.getSelection()).toEqual(new Range(0, 0));
 
     });
   });
