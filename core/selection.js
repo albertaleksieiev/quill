@@ -87,7 +87,7 @@ class Selection {
     this.emitter.listenDOM('mousedown', document.body, () => {
       this.mouseDown = true;
     });
-    this.emitter.listenDOM('mouseup', document.body, () => {
+    this.emitter.listenDOM('mouseup', document, () => {
       this.mouseDown = false;
       this.update(Emitter.sources.USER);
     });

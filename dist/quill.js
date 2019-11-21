@@ -2580,7 +2580,7 @@ var Selection = function () {
       this.emitter.listenDOM('mousedown', document.body, function () {
         _this3.mouseDown = true;
       });
-      this.emitter.listenDOM('mouseup', document.body, function () {
+      this.emitter.listenDOM('mouseup', document, function () {
         _this3.mouseDown = false;
         _this3.update(_emitter4.default.sources.USER);
       });
