@@ -2577,8 +2577,11 @@ var Selection = function () {
     value: function handleDragging() {
       var _this3 = this;
 
-      this.emitter.listenDOM('mousedown', document.body, function () {
-        _this3.mouseDown = true;
+      this.emitter.listenDOM('mousedown', document.body, function (event) {
+        if (event.button != 2) {
+          // Right mouse button
+          _this3.mouseDown = true;
+        }
       });
       this.emitter.listenDOM('mouseup', document, function () {
         _this3.mouseDown = false;
