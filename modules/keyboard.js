@@ -27,6 +27,13 @@ class Keyboard extends Module {
   constructor(quill, options) {
     super(quill, options);
     this.bindings = {};
+    if (this.options.priority_bindings != null) {
+      Object.keys(this.options.priority_bindings).forEach((name) => {
+        if (this.options.priority_bindings[name]) {
+          this.addBinding(this.options.priority_bindings[name]);
+        }
+      });
+    }
     Object.keys(this.options.bindings).forEach((name) => {
       if (name === 'list autofill' &&
           quill.scroll.whitelist != null &&

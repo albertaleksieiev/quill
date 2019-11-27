@@ -4651,6 +4651,13 @@ var Keyboard = function (_Module) {
     var _this = _possibleConstructorReturn(this, (Keyboard.__proto__ || Object.getPrototypeOf(Keyboard)).call(this, quill, options));
 
     _this.bindings = {};
+    if (_this.options.priority_bindings != null) {
+      Object.keys(_this.options.priority_bindings).forEach(function (name) {
+        if (_this.options.priority_bindings[name]) {
+          _this.addBinding(_this.options.priority_bindings[name]);
+        }
+      });
+    }
     Object.keys(_this.options.bindings).forEach(function (name) {
       if (name === 'list autofill' && quill.scroll.whitelist != null && !quill.scroll.whitelist['list']) {
         return;
