@@ -27,6 +27,13 @@ class Keyboard extends Module {
   constructor(quill, options) {
     super(quill, options);
     this.bindings = {};
+    if (this.options.priority_bindings != null) {
+      Object.keys(this.options.priority_bindings).forEach((name) => {
+        if (this.options.priority_bindings[name]) {
+          this.addBinding(this.options.priority_bindings[name]);
+        }
+      });
+    }
     Object.keys(this.options.bindings).forEach((name) => {
       if (name === 'list autofill' &&
           quill.scroll.whitelist != null &&
@@ -38,7 +45,7 @@ class Keyboard extends Module {
       }
     });
     this.addBinding({ key: Keyboard.keys.ENTER, shiftKey: null }, handleEnter);
-    this.addBinding({ key: Keyboard.keys.ENTER, metaKey: null, ctrlKey: null, altKey: null }, function() {});
+    this.addBinding({ key: Keyboard.keys.ENTER, metaKey: false, ctrlKey: null, altKey: null }, function() {});
     if (/Firefox/i.test(navigator.userAgent)) {
       // Need to handle delete and backspace for Firefox in the general case #1171
       this.addBinding({ key: Keyboard.keys.BACKSPACE }, { collapsed: true }, handleBackspace);
@@ -190,9 +197,11 @@ Keyboard.DEFAULTS = {
       offset: 0,
       handler: function(range, context) {
         if (context.format.indent != null) {
-          this.quill.format('indent', '-1', Quill.sources.USER);
+          this.quill.format('indent', null, Quill.sources.USER);
+          return true
         } else if (context.format.list != null) {
-          this.quill.format('list', false, Quill.sources.USER);
+          this.quill.format('list', null, Quill.sources.USER);
+          return true
         }
       }
     },

@@ -23,10 +23,10 @@ module.exports = function(config) {
     colors: true,
     autoWatch: false,
     singleRun: true,
-    browsers: ['Safari'],
+    browsers: ['SafariNative'],
 
     client: {
-      useIframe: false
+      useIframe: true
     },
 
     coverageReporter: {

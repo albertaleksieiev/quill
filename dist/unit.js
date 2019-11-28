@@ -1033,7 +1033,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -1049,7 +1049,7 @@ var _parchment = __webpack_require__(0);
 
 var _parchment2 = _interopRequireDefault(_parchment);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _selection2 = _interopRequireDefault(_selection);
 
@@ -2444,6 +2444,512 @@ exports.default = CodeBlock;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.default = exports.Range = undefined;
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _parchment = __webpack_require__(0);
+
+var _parchment2 = _interopRequireDefault(_parchment);
+
+var _clone = __webpack_require__(22);
+
+var _clone2 = _interopRequireDefault(_clone);
+
+var _deepEqual = __webpack_require__(11);
+
+var _deepEqual2 = _interopRequireDefault(_deepEqual);
+
+var _emitter3 = __webpack_require__(8);
+
+var _emitter4 = _interopRequireDefault(_emitter3);
+
+var _logger = __webpack_require__(10);
+
+var _logger2 = _interopRequireDefault(_logger);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var debug = (0, _logger2.default)('quill:selection');
+
+var Range = function Range(index) {
+  var length = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+  _classCallCheck(this, Range);
+
+  this.index = index;
+  this.length = length;
+};
+
+var Selection = function () {
+  function Selection(scroll, emitter) {
+    var _this = this;
+
+    _classCallCheck(this, Selection);
+
+    this.emitter = emitter;
+    this.scroll = scroll;
+    this.composing = false;
+    this.mouseDown = false;
+    this.root = this.scroll.domNode;
+    this.cursor = _parchment2.default.create('cursor', this);
+    // savedRange is last non-null range
+    this.lastRange = this.savedRange = new Range(0, 0);
+
+    if (typeof window.IS_ANDROID === 'undefined' || !window.IS_ANDROID) {
+      this.handleComposition();
+    }
+
+    this.handleDragging();
+    this.emitter.listenDOM('selectionchange', document, function () {
+      if (!_this.mouseDown) {
+        setTimeout(_this.update.bind(_this, _emitter4.default.sources.USER), 1);
+      }
+    });
+    this.emitter.on(_emitter4.default.events.EDITOR_CHANGE, function (type, delta) {
+      if (type === _emitter4.default.events.TEXT_CHANGE && delta.length() > 0) {
+        _this.update(_emitter4.default.sources.SILENT);
+      }
+    });
+    this.emitter.on(_emitter4.default.events.SCROLL_BEFORE_UPDATE, function () {
+      if (!_this.hasFocus()) return;
+
+      var _getRange = _this.getRange(),
+          _getRange2 = _slicedToArray(_getRange, 2),
+          quillSelection = _getRange2[0],
+          nativeSelection = _getRange2[1];
+
+      if (nativeSelection == null) return;
+      if (nativeSelection.start.node === _this.cursor.textNode) return; // cursor.restore() will handle
+      // TODO unclear if this has negative side effects
+      _this.emitter.once(_emitter4.default.events.SCROLL_UPDATE, function () {
+        // Native selection is no longer valid can't restore it - use quill selection fallback
+        if (nativeSelection.start.node.parentNode == null) {
+          _this.setRange(quillSelection);
+        } else {
+          try {
+            _this.setNativeRange(nativeSelection.start.node, nativeSelection.start.offset, nativeSelection.end.node, nativeSelection.end.offset);
+          } catch (ignored) {}
+        }
+      });
+    });
+    this.emitter.on(_emitter4.default.events.SCROLL_OPTIMIZE, function (mutations, context) {
+      if (context.range) {
+        var _context$range = context.range,
+            startNode = _context$range.startNode,
+            startOffset = _context$range.startOffset,
+            endNode = _context$range.endNode,
+            endOffset = _context$range.endOffset;
+
+        _this.setNativeRange(startNode, startOffset, endNode, endOffset);
+      }
+    });
+    this.update(_emitter4.default.sources.SILENT);
+  }
+
+  _createClass(Selection, [{
+    key: 'handleComposition',
+    value: function handleComposition() {
+      var _this2 = this;
+
+      this.root.addEventListener('compositionstart', function () {
+        _this2.composing = true;
+      });
+      this.root.addEventListener('compositionend', function () {
+        _this2.composing = false;
+        if (_this2.cursor.parent) {
+          var range = _this2.cursor.restore();
+          if (!range) return;
+          setTimeout(function () {
+            _this2.setNativeRange(range.startNode, range.startOffset, range.endNode, range.endOffset);
+          }, 1);
+        }
+      });
+    }
+  }, {
+    key: 'handleDragging',
+    value: function handleDragging() {
+      var _this3 = this;
+
+      this.emitter.listenDOM('mousedown', document.body, function (event) {
+        if (event.button != 2) {
+          // Right mouse button
+          _this3.mouseDown = true;
+        }
+      });
+      this.emitter.listenDOM('mouseup', document, function () {
+        _this3.mouseDown = false;
+        _this3.update(_emitter4.default.sources.USER);
+      });
+    }
+  }, {
+    key: 'focus',
+    value: function focus() {
+      if (this.hasFocus()) return;
+      this.root.focus();
+      this.setRange(this.savedRange);
+    }
+  }, {
+    key: 'format',
+    value: function format(_format, value) {
+      if (this.scroll.whitelist != null && !this.scroll.whitelist[_format]) return;
+      this.scroll.update();
+      var nativeRange = this.getNativeRange();
+      if (nativeRange == null || !nativeRange.native.collapsed || _parchment2.default.query(_format, _parchment2.default.Scope.BLOCK)) return;
+      if (nativeRange.start.node !== this.cursor.textNode) {
+        var blot = _parchment2.default.find(nativeRange.start.node, false);
+        if (blot == null) return;
+        // TODO Give blot ability to not split
+        if (blot instanceof _parchment2.default.Leaf) {
+          var after = blot.split(nativeRange.start.offset);
+          blot.parent.insertBefore(this.cursor, after);
+        } else {
+          blot.insertBefore(this.cursor, nativeRange.start.node); // Should never happen
+        }
+        this.cursor.attach();
+      }
+      this.cursor.format(_format, value);
+      this.scroll.optimize();
+      this.setNativeRange(this.cursor.textNode, this.cursor.textNode.data.length);
+      this.update();
+    }
+  }, {
+    key: 'getBounds',
+    value: function getBounds(index) {
+      var length = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+      var scrollLength = this.scroll.length();
+      index = Math.min(index, scrollLength - 1);
+      length = Math.min(index + length, scrollLength - 1) - index;
+      var node = void 0,
+          _scroll$leaf = this.scroll.leaf(index),
+          _scroll$leaf2 = _slicedToArray(_scroll$leaf, 2),
+          leaf = _scroll$leaf2[0],
+          offset = _scroll$leaf2[1];
+      if (leaf == null) return null;
+
+      var _leaf$position = leaf.position(offset, true);
+
+      var _leaf$position2 = _slicedToArray(_leaf$position, 2);
+
+      node = _leaf$position2[0];
+      offset = _leaf$position2[1];
+
+      var range = document.createRange();
+      if (length > 0) {
+        range.setStart(node, offset);
+
+        var _scroll$leaf3 = this.scroll.leaf(index + length);
+
+        var _scroll$leaf4 = _slicedToArray(_scroll$leaf3, 2);
+
+        leaf = _scroll$leaf4[0];
+        offset = _scroll$leaf4[1];
+
+        if (leaf == null) return null;
+
+        var _leaf$position3 = leaf.position(offset, true);
+
+        var _leaf$position4 = _slicedToArray(_leaf$position3, 2);
+
+        node = _leaf$position4[0];
+        offset = _leaf$position4[1];
+
+        range.setEnd(node, offset);
+        return range.getBoundingClientRect();
+      } else {
+        var side = 'left';
+        var rect = void 0;
+        if (node instanceof Text) {
+          if (offset < node.data.length) {
+            range.setStart(node, offset);
+            range.setEnd(node, offset + 1);
+          } else {
+            range.setStart(node, offset - 1);
+            range.setEnd(node, offset);
+            side = 'right';
+          }
+          rect = range.getBoundingClientRect();
+        } else {
+          rect = leaf.domNode.getBoundingClientRect();
+          if (offset > 0) side = 'right';
+        }
+        return {
+          bottom: rect.top + rect.height,
+          height: rect.height,
+          left: rect[side],
+          right: rect[side],
+          top: rect.top,
+          width: 0
+        };
+      }
+    }
+  }, {
+    key: 'getNativeRange',
+    value: function getNativeRange() {
+      var selection = document.getSelection();
+      if (selection == null || selection.rangeCount <= 0) return null;
+      var nativeRange = selection.getRangeAt(0);
+      if (nativeRange == null) return null;
+      var range = this.normalizeNative(nativeRange);
+      debug.info('getNativeRange', range);
+      return range;
+    }
+  }, {
+    key: 'getRange',
+    value: function getRange() {
+      var normalized = this.getNativeRange();
+      if (normalized == null) return [null, null];
+      var range = this.normalizedToRange(normalized);
+      return [range, normalized];
+    }
+  }, {
+    key: 'hasFocus',
+    value: function hasFocus() {
+      return document.activeElement === this.root;
+    }
+  }, {
+    key: 'normalizedToRange',
+    value: function normalizedToRange(range) {
+      var _this4 = this;
+
+      var positions = [[range.start.node, range.start.offset]];
+      if (!range.native.collapsed) {
+        positions.push([range.end.node, range.end.offset]);
+      }
+      var indexes = positions.map(function (position) {
+        var _position = _slicedToArray(position, 2),
+            node = _position[0],
+            offset = _position[1];
+
+        var blot = _parchment2.default.find(node, true);
+        var index = blot.offset(_this4.scroll);
+        if (offset === 0) {
+          return index;
+        } else if (blot instanceof _parchment2.default.Container) {
+          return index + blot.length();
+        } else {
+          return index + blot.index(node, offset);
+        }
+      });
+      var end = Math.min(Math.max.apply(Math, _toConsumableArray(indexes)), this.scroll.length() - 1);
+      var start = Math.min.apply(Math, [end].concat(_toConsumableArray(indexes)));
+      return new Range(start, end - start);
+    }
+  }, {
+    key: 'normalizeNative',
+    value: function normalizeNative(nativeRange) {
+      if (!contains(this.root, nativeRange.startContainer) || !nativeRange.collapsed && !contains(this.root, nativeRange.endContainer)) {
+        return null;
+      }
+      var range = {
+        start: { node: nativeRange.startContainer, offset: nativeRange.startOffset },
+        end: { node: nativeRange.endContainer, offset: nativeRange.endOffset },
+        native: nativeRange
+      };
+      [range.start, range.end].forEach(function (position) {
+        var node = position.node,
+            offset = position.offset;
+        while (!(node instanceof Text) && node.childNodes.length > 0) {
+          if (node.childNodes.length > offset) {
+            node = node.childNodes[offset];
+            offset = 0;
+          } else if (node.childNodes.length === offset) {
+            node = node.lastChild;
+            offset = node instanceof Text ? node.data.length : node.childNodes.length + 1;
+          } else {
+            break;
+          }
+        }
+        position.node = node, position.offset = offset;
+      });
+      return range;
+    }
+  }, {
+    key: 'rangeToNative',
+    value: function rangeToNative(range) {
+      var _this5 = this;
+
+      var indexes = range.collapsed ? [range.index] : [range.index, range.index + range.length];
+      var args = [];
+      var scrollLength = this.scroll.length();
+      indexes.forEach(function (index, i) {
+        index = Math.min(scrollLength - 1, index);
+        var node = void 0,
+            _scroll$leaf5 = _this5.scroll.leaf(index),
+            _scroll$leaf6 = _slicedToArray(_scroll$leaf5, 2),
+            leaf = _scroll$leaf6[0],
+            offset = _scroll$leaf6[1];
+        var _leaf$position5 = leaf.position(offset, i !== 0);
+
+        var _leaf$position6 = _slicedToArray(_leaf$position5, 2);
+
+        node = _leaf$position6[0];
+        offset = _leaf$position6[1];
+
+        args.push(node, offset);
+      });
+      if (args.length < 2) {
+        args = args.concat(args);
+      }
+      return args;
+    }
+  }, {
+    key: 'scrollIntoView',
+    value: function scrollIntoView(scrollingContainer) {
+      var range = this.lastRange;
+      if (range == null) return;
+      var bounds = this.getBounds(range.index, range.length);
+      if (bounds == null) return;
+      var limit = this.scroll.length() - 1;
+
+      var _scroll$line = this.scroll.line(Math.min(range.index, limit)),
+          _scroll$line2 = _slicedToArray(_scroll$line, 1),
+          first = _scroll$line2[0];
+
+      var last = first;
+      if (range.length > 0) {
+        var _scroll$line3 = this.scroll.line(Math.min(range.index + range.length, limit));
+
+        var _scroll$line4 = _slicedToArray(_scroll$line3, 1);
+
+        last = _scroll$line4[0];
+      }
+      if (first == null || last == null) return;
+      var scrollBounds = scrollingContainer.getBoundingClientRect();
+      if (bounds.top < scrollBounds.top) {
+        scrollingContainer.scrollTop -= scrollBounds.top - bounds.top;
+      } else if (bounds.bottom > scrollBounds.bottom) {
+        scrollingContainer.scrollTop += bounds.bottom - scrollBounds.bottom;
+      }
+    }
+  }, {
+    key: 'setNativeRange',
+    value: function setNativeRange(startNode, startOffset) {
+      var endNode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : startNode;
+      var endOffset = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : startOffset;
+      var force = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+
+      debug.info('setNativeRange', startNode, startOffset, endNode, endOffset);
+      if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
+        return;
+      }
+      var selection = document.getSelection();
+      if (selection == null) return;
+      if (startNode != null) {
+        if (!this.hasFocus()) this.root.focus();
+        var native = (this.getNativeRange() || {}).native;
+        if (native == null || force || startNode !== native.startContainer || startOffset !== native.startOffset || endNode !== native.endContainer || endOffset !== native.endOffset) {
+
+          if (startNode.tagName == "BR") {
+            startOffset = [].indexOf.call(startNode.parentNode.childNodes, startNode);
+            startNode = startNode.parentNode;
+          }
+          if (endNode.tagName == "BR") {
+            endOffset = [].indexOf.call(endNode.parentNode.childNodes, endNode);
+            endNode = endNode.parentNode;
+          }
+          var range = document.createRange();
+          range.setStart(startNode, startOffset);
+          range.setEnd(endNode, endOffset);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else {
+        selection.removeAllRanges();
+        this.root.blur();
+        document.body.focus(); // root.blur() not enough on IE11+Travis+SauceLabs (but not local VMs)
+      }
+    }
+  }, {
+    key: 'setRange',
+    value: function setRange(range) {
+      var force = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+      var source = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : _emitter4.default.sources.API;
+
+      if (typeof force === 'string') {
+        source = force;
+        force = false;
+      }
+      debug.info('setRange', range);
+      if (range != null) {
+        var args = this.rangeToNative(range);
+        this.setNativeRange.apply(this, _toConsumableArray(args).concat([force]));
+      } else {
+        this.setNativeRange(null);
+      }
+      this.update(source);
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      var source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _emitter4.default.sources.USER;
+
+      var oldRange = this.lastRange;
+
+      var _getRange3 = this.getRange(),
+          _getRange4 = _slicedToArray(_getRange3, 2),
+          lastRange = _getRange4[0],
+          nativeRange = _getRange4[1];
+
+      this.lastRange = lastRange;
+      if (this.lastRange != null) {
+        this.savedRange = this.lastRange;
+      }
+      if (!(0, _deepEqual2.default)(oldRange, this.lastRange)) {
+        var _emitter;
+
+        if (!this.composing && nativeRange != null && nativeRange.native.collapsed && nativeRange.start.node !== this.cursor.textNode) {
+          this.cursor.restore();
+        }
+        var args = [_emitter4.default.events.SELECTION_CHANGE, (0, _clone2.default)(this.lastRange), (0, _clone2.default)(oldRange), source];
+        (_emitter = this.emitter).emit.apply(_emitter, [_emitter4.default.events.EDITOR_CHANGE].concat(args));
+        if (source !== _emitter4.default.sources.SILENT) {
+          var _emitter2;
+
+          (_emitter2 = this.emitter).emit.apply(_emitter2, args);
+        }
+      }
+    }
+  }]);
+
+  return Selection;
+}();
+
+function contains(parent, descendant) {
+  try {
+    // Firefox inserts inaccessible nodes around video elements
+    descendant.parentNode;
+  } catch (e) {
+    return false;
+  }
+  // IE11 has bug with Text nodes
+  // https://connect.microsoft.com/IE/feedback/details/780874/node-contains-is-incorrect
+  if (descendant instanceof Text) {
+    descendant = descendant.parentNode;
+  }
+  return parent.contains(descendant);
+}
+
+exports.Range = Range;
+exports.default = Selection;
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
@@ -2801,509 +3307,6 @@ function normalizeDelta(delta) {
 }
 
 exports.default = Editor;
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = exports.Range = undefined;
-
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _parchment = __webpack_require__(0);
-
-var _parchment2 = _interopRequireDefault(_parchment);
-
-var _clone = __webpack_require__(22);
-
-var _clone2 = _interopRequireDefault(_clone);
-
-var _deepEqual = __webpack_require__(11);
-
-var _deepEqual2 = _interopRequireDefault(_deepEqual);
-
-var _emitter3 = __webpack_require__(8);
-
-var _emitter4 = _interopRequireDefault(_emitter3);
-
-var _logger = __webpack_require__(10);
-
-var _logger2 = _interopRequireDefault(_logger);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var debug = (0, _logger2.default)('quill:selection');
-
-var Range = function Range(index) {
-  var length = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-
-  _classCallCheck(this, Range);
-
-  this.index = index;
-  this.length = length;
-};
-
-var Selection = function () {
-  function Selection(scroll, emitter) {
-    var _this = this;
-
-    _classCallCheck(this, Selection);
-
-    this.emitter = emitter;
-    this.scroll = scroll;
-    this.composing = false;
-    this.mouseDown = false;
-    this.root = this.scroll.domNode;
-    this.cursor = _parchment2.default.create('cursor', this);
-    // savedRange is last non-null range
-    this.lastRange = this.savedRange = new Range(0, 0);
-
-    if (typeof window.IS_ANDROID === 'undefined' || !window.IS_ANDROID) {
-      this.handleComposition();
-    }
-
-    this.handleDragging();
-    this.emitter.listenDOM('selectionchange', document, function () {
-      if (!_this.mouseDown) {
-        setTimeout(_this.update.bind(_this, _emitter4.default.sources.USER), 1);
-      }
-    });
-    this.emitter.on(_emitter4.default.events.EDITOR_CHANGE, function (type, delta) {
-      if (type === _emitter4.default.events.TEXT_CHANGE && delta.length() > 0) {
-        _this.update(_emitter4.default.sources.SILENT);
-      }
-    });
-    this.emitter.on(_emitter4.default.events.SCROLL_BEFORE_UPDATE, function () {
-      if (!_this.hasFocus()) return;
-
-      var _getRange = _this.getRange(),
-          _getRange2 = _slicedToArray(_getRange, 2),
-          quillSelection = _getRange2[0],
-          nativeSelection = _getRange2[1];
-
-      if (nativeSelection == null) return;
-      if (nativeSelection.start.node === _this.cursor.textNode) return; // cursor.restore() will handle
-      // TODO unclear if this has negative side effects
-      _this.emitter.once(_emitter4.default.events.SCROLL_UPDATE, function () {
-        // Native selection is no longer valid can't restore it - use quill selection fallback
-        if (nativeSelection.start.node.parentNode == null) {
-          _this.setRange(quillSelection);
-        } else {
-          try {
-            _this.setNativeRange(nativeSelection.start.node, nativeSelection.start.offset, nativeSelection.end.node, nativeSelection.end.offset);
-          } catch (ignored) {}
-        }
-      });
-    });
-    this.emitter.on(_emitter4.default.events.SCROLL_OPTIMIZE, function (mutations, context) {
-      if (context.range) {
-        var _context$range = context.range,
-            startNode = _context$range.startNode,
-            startOffset = _context$range.startOffset,
-            endNode = _context$range.endNode,
-            endOffset = _context$range.endOffset;
-
-        _this.setNativeRange(startNode, startOffset, endNode, endOffset);
-      }
-    });
-    this.update(_emitter4.default.sources.SILENT);
-  }
-
-  _createClass(Selection, [{
-    key: 'handleComposition',
-    value: function handleComposition() {
-      var _this2 = this;
-
-      this.root.addEventListener('compositionstart', function () {
-        _this2.composing = true;
-      });
-      this.root.addEventListener('compositionend', function () {
-        _this2.composing = false;
-        if (_this2.cursor.parent) {
-          var range = _this2.cursor.restore();
-          if (!range) return;
-          setTimeout(function () {
-            _this2.setNativeRange(range.startNode, range.startOffset, range.endNode, range.endOffset);
-          }, 1);
-        }
-      });
-    }
-  }, {
-    key: 'handleDragging',
-    value: function handleDragging() {
-      var _this3 = this;
-
-      this.emitter.listenDOM('mousedown', document.body, function () {
-        _this3.mouseDown = true;
-      });
-      this.emitter.listenDOM('mouseup', document.body, function () {
-        _this3.mouseDown = false;
-        _this3.update(_emitter4.default.sources.USER);
-      });
-    }
-  }, {
-    key: 'focus',
-    value: function focus() {
-      if (this.hasFocus()) return;
-      this.root.focus();
-      this.setRange(this.savedRange);
-    }
-  }, {
-    key: 'format',
-    value: function format(_format, value) {
-      if (this.scroll.whitelist != null && !this.scroll.whitelist[_format]) return;
-      this.scroll.update();
-      var nativeRange = this.getNativeRange();
-      if (nativeRange == null || !nativeRange.native.collapsed || _parchment2.default.query(_format, _parchment2.default.Scope.BLOCK)) return;
-      if (nativeRange.start.node !== this.cursor.textNode) {
-        var blot = _parchment2.default.find(nativeRange.start.node, false);
-        if (blot == null) return;
-        // TODO Give blot ability to not split
-        if (blot instanceof _parchment2.default.Leaf) {
-          var after = blot.split(nativeRange.start.offset);
-          blot.parent.insertBefore(this.cursor, after);
-        } else {
-          blot.insertBefore(this.cursor, nativeRange.start.node); // Should never happen
-        }
-        this.cursor.attach();
-      }
-      this.cursor.format(_format, value);
-      this.scroll.optimize();
-      this.setNativeRange(this.cursor.textNode, this.cursor.textNode.data.length);
-      this.update();
-    }
-  }, {
-    key: 'getBounds',
-    value: function getBounds(index) {
-      var length = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-
-      var scrollLength = this.scroll.length();
-      index = Math.min(index, scrollLength - 1);
-      length = Math.min(index + length, scrollLength - 1) - index;
-      var node = void 0,
-          _scroll$leaf = this.scroll.leaf(index),
-          _scroll$leaf2 = _slicedToArray(_scroll$leaf, 2),
-          leaf = _scroll$leaf2[0],
-          offset = _scroll$leaf2[1];
-      if (leaf == null) return null;
-
-      var _leaf$position = leaf.position(offset, true);
-
-      var _leaf$position2 = _slicedToArray(_leaf$position, 2);
-
-      node = _leaf$position2[0];
-      offset = _leaf$position2[1];
-
-      var range = document.createRange();
-      if (length > 0) {
-        range.setStart(node, offset);
-
-        var _scroll$leaf3 = this.scroll.leaf(index + length);
-
-        var _scroll$leaf4 = _slicedToArray(_scroll$leaf3, 2);
-
-        leaf = _scroll$leaf4[0];
-        offset = _scroll$leaf4[1];
-
-        if (leaf == null) return null;
-
-        var _leaf$position3 = leaf.position(offset, true);
-
-        var _leaf$position4 = _slicedToArray(_leaf$position3, 2);
-
-        node = _leaf$position4[0];
-        offset = _leaf$position4[1];
-
-        range.setEnd(node, offset);
-        return range.getBoundingClientRect();
-      } else {
-        var side = 'left';
-        var rect = void 0;
-        if (node instanceof Text) {
-          if (offset < node.data.length) {
-            range.setStart(node, offset);
-            range.setEnd(node, offset + 1);
-          } else {
-            range.setStart(node, offset - 1);
-            range.setEnd(node, offset);
-            side = 'right';
-          }
-          rect = range.getBoundingClientRect();
-        } else {
-          rect = leaf.domNode.getBoundingClientRect();
-          if (offset > 0) side = 'right';
-        }
-        return {
-          bottom: rect.top + rect.height,
-          height: rect.height,
-          left: rect[side],
-          right: rect[side],
-          top: rect.top,
-          width: 0
-        };
-      }
-    }
-  }, {
-    key: 'getNativeRange',
-    value: function getNativeRange() {
-      var selection = document.getSelection();
-      if (selection == null || selection.rangeCount <= 0) return null;
-      var nativeRange = selection.getRangeAt(0);
-      if (nativeRange == null) return null;
-      var range = this.normalizeNative(nativeRange);
-      debug.info('getNativeRange', range);
-      return range;
-    }
-  }, {
-    key: 'getRange',
-    value: function getRange() {
-      var normalized = this.getNativeRange();
-      if (normalized == null) return [null, null];
-      var range = this.normalizedToRange(normalized);
-      return [range, normalized];
-    }
-  }, {
-    key: 'hasFocus',
-    value: function hasFocus() {
-      return document.activeElement === this.root;
-    }
-  }, {
-    key: 'normalizedToRange',
-    value: function normalizedToRange(range) {
-      var _this4 = this;
-
-      var positions = [[range.start.node, range.start.offset]];
-      if (!range.native.collapsed) {
-        positions.push([range.end.node, range.end.offset]);
-      }
-      var indexes = positions.map(function (position) {
-        var _position = _slicedToArray(position, 2),
-            node = _position[0],
-            offset = _position[1];
-
-        var blot = _parchment2.default.find(node, true);
-        var index = blot.offset(_this4.scroll);
-        if (offset === 0) {
-          return index;
-        } else if (blot instanceof _parchment2.default.Container) {
-          return index + blot.length();
-        } else {
-          return index + blot.index(node, offset);
-        }
-      });
-      var end = Math.min(Math.max.apply(Math, _toConsumableArray(indexes)), this.scroll.length() - 1);
-      var start = Math.min.apply(Math, [end].concat(_toConsumableArray(indexes)));
-      return new Range(start, end - start);
-    }
-  }, {
-    key: 'normalizeNative',
-    value: function normalizeNative(nativeRange) {
-      if (!contains(this.root, nativeRange.startContainer) || !nativeRange.collapsed && !contains(this.root, nativeRange.endContainer)) {
-        return null;
-      }
-      var range = {
-        start: { node: nativeRange.startContainer, offset: nativeRange.startOffset },
-        end: { node: nativeRange.endContainer, offset: nativeRange.endOffset },
-        native: nativeRange
-      };
-      [range.start, range.end].forEach(function (position) {
-        var node = position.node,
-            offset = position.offset;
-        while (!(node instanceof Text) && node.childNodes.length > 0) {
-          if (node.childNodes.length > offset) {
-            node = node.childNodes[offset];
-            offset = 0;
-          } else if (node.childNodes.length === offset) {
-            node = node.lastChild;
-            offset = node instanceof Text ? node.data.length : node.childNodes.length + 1;
-          } else {
-            break;
-          }
-        }
-        position.node = node, position.offset = offset;
-      });
-      return range;
-    }
-  }, {
-    key: 'rangeToNative',
-    value: function rangeToNative(range) {
-      var _this5 = this;
-
-      var indexes = range.collapsed ? [range.index] : [range.index, range.index + range.length];
-      var args = [];
-      var scrollLength = this.scroll.length();
-      indexes.forEach(function (index, i) {
-        index = Math.min(scrollLength - 1, index);
-        var node = void 0,
-            _scroll$leaf5 = _this5.scroll.leaf(index),
-            _scroll$leaf6 = _slicedToArray(_scroll$leaf5, 2),
-            leaf = _scroll$leaf6[0],
-            offset = _scroll$leaf6[1];
-        var _leaf$position5 = leaf.position(offset, i !== 0);
-
-        var _leaf$position6 = _slicedToArray(_leaf$position5, 2);
-
-        node = _leaf$position6[0];
-        offset = _leaf$position6[1];
-
-        args.push(node, offset);
-      });
-      if (args.length < 2) {
-        args = args.concat(args);
-      }
-      return args;
-    }
-  }, {
-    key: 'scrollIntoView',
-    value: function scrollIntoView(scrollingContainer) {
-      var range = this.lastRange;
-      if (range == null) return;
-      var bounds = this.getBounds(range.index, range.length);
-      if (bounds == null) return;
-      var limit = this.scroll.length() - 1;
-
-      var _scroll$line = this.scroll.line(Math.min(range.index, limit)),
-          _scroll$line2 = _slicedToArray(_scroll$line, 1),
-          first = _scroll$line2[0];
-
-      var last = first;
-      if (range.length > 0) {
-        var _scroll$line3 = this.scroll.line(Math.min(range.index + range.length, limit));
-
-        var _scroll$line4 = _slicedToArray(_scroll$line3, 1);
-
-        last = _scroll$line4[0];
-      }
-      if (first == null || last == null) return;
-      var scrollBounds = scrollingContainer.getBoundingClientRect();
-      if (bounds.top < scrollBounds.top) {
-        scrollingContainer.scrollTop -= scrollBounds.top - bounds.top;
-      } else if (bounds.bottom > scrollBounds.bottom) {
-        scrollingContainer.scrollTop += bounds.bottom - scrollBounds.bottom;
-      }
-    }
-  }, {
-    key: 'setNativeRange',
-    value: function setNativeRange(startNode, startOffset) {
-      var endNode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : startNode;
-      var endOffset = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : startOffset;
-      var force = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
-
-      debug.info('setNativeRange', startNode, startOffset, endNode, endOffset);
-      if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
-        return;
-      }
-      var selection = document.getSelection();
-      if (selection == null) return;
-      if (startNode != null) {
-        if (!this.hasFocus()) this.root.focus();
-        var native = (this.getNativeRange() || {}).native;
-        if (native == null || force || startNode !== native.startContainer || startOffset !== native.startOffset || endNode !== native.endContainer || endOffset !== native.endOffset) {
-
-          if (startNode.tagName == "BR") {
-            startOffset = [].indexOf.call(startNode.parentNode.childNodes, startNode);
-            startNode = startNode.parentNode;
-          }
-          if (endNode.tagName == "BR") {
-            endOffset = [].indexOf.call(endNode.parentNode.childNodes, endNode);
-            endNode = endNode.parentNode;
-          }
-          var range = document.createRange();
-          range.setStart(startNode, startOffset);
-          range.setEnd(endNode, endOffset);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      } else {
-        selection.removeAllRanges();
-        this.root.blur();
-        document.body.focus(); // root.blur() not enough on IE11+Travis+SauceLabs (but not local VMs)
-      }
-    }
-  }, {
-    key: 'setRange',
-    value: function setRange(range) {
-      var force = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-      var source = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : _emitter4.default.sources.API;
-
-      if (typeof force === 'string') {
-        source = force;
-        force = false;
-      }
-      debug.info('setRange', range);
-      if (range != null) {
-        var args = this.rangeToNative(range);
-        this.setNativeRange.apply(this, _toConsumableArray(args).concat([force]));
-      } else {
-        this.setNativeRange(null);
-      }
-      this.update(source);
-    }
-  }, {
-    key: 'update',
-    value: function update() {
-      var source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _emitter4.default.sources.USER;
-
-      var oldRange = this.lastRange;
-
-      var _getRange3 = this.getRange(),
-          _getRange4 = _slicedToArray(_getRange3, 2),
-          lastRange = _getRange4[0],
-          nativeRange = _getRange4[1];
-
-      this.lastRange = lastRange;
-      if (this.lastRange != null) {
-        this.savedRange = this.lastRange;
-      }
-      if (!(0, _deepEqual2.default)(oldRange, this.lastRange)) {
-        var _emitter;
-
-        if (!this.composing && nativeRange != null && nativeRange.native.collapsed && nativeRange.start.node !== this.cursor.textNode) {
-          this.cursor.restore();
-        }
-        var args = [_emitter4.default.events.SELECTION_CHANGE, (0, _clone2.default)(this.lastRange), (0, _clone2.default)(oldRange), source];
-        (_emitter = this.emitter).emit.apply(_emitter, [_emitter4.default.events.EDITOR_CHANGE].concat(args));
-        if (source !== _emitter4.default.sources.SILENT) {
-          var _emitter2;
-
-          (_emitter2 = this.emitter).emit.apply(_emitter2, args);
-        }
-      }
-    }
-  }]);
-
-  return Selection;
-}();
-
-function contains(parent, descendant) {
-  try {
-    // Firefox inserts inaccessible nodes around video elements
-    descendant.parentNode;
-  } catch (e) {
-    return false;
-  }
-  // IE11 has bug with Text nodes
-  // https://connect.microsoft.com/IE/feedback/details/780874/node-contains-is-incorrect
-  if (descendant instanceof Text) {
-    descendant = descendant.parentNode;
-  }
-  return parent.contains(descendant);
-}
-
-exports.Range = Range;
-exports.default = Selection;
 
 /***/ }),
 /* 16 */
@@ -4648,6 +4651,13 @@ var Keyboard = function (_Module) {
     var _this = _possibleConstructorReturn(this, (Keyboard.__proto__ || Object.getPrototypeOf(Keyboard)).call(this, quill, options));
 
     _this.bindings = {};
+    if (_this.options.priority_bindings != null) {
+      Object.keys(_this.options.priority_bindings).forEach(function (name) {
+        if (_this.options.priority_bindings[name]) {
+          _this.addBinding(_this.options.priority_bindings[name]);
+        }
+      });
+    }
     Object.keys(_this.options.bindings).forEach(function (name) {
       if (name === 'list autofill' && quill.scroll.whitelist != null && !quill.scroll.whitelist['list']) {
         return;
@@ -4657,7 +4667,7 @@ var Keyboard = function (_Module) {
       }
     });
     _this.addBinding({ key: Keyboard.keys.ENTER, shiftKey: null }, handleEnter);
-    _this.addBinding({ key: Keyboard.keys.ENTER, metaKey: null, ctrlKey: null, altKey: null }, function () {});
+    _this.addBinding({ key: Keyboard.keys.ENTER, metaKey: false, ctrlKey: null, altKey: null }, function () {});
     if (/Firefox/i.test(navigator.userAgent)) {
       // Need to handle delete and backspace for Firefox in the general case #1171
       _this.addBinding({ key: Keyboard.keys.BACKSPACE }, { collapsed: true }, handleBackspace);
@@ -4831,9 +4841,11 @@ Keyboard.DEFAULTS = {
       offset: 0,
       handler: function handler(range, context) {
         if (context.format.indent != null) {
-          this.quill.format('indent', '-1', _quill2.default.sources.USER);
+          this.quill.format('indent', null, _quill2.default.sources.USER);
+          return true;
         } else if (context.format.list != null) {
-          this.quill.format('list', false, _quill2.default.sources.USER);
+          this.quill.format('list', null, _quill2.default.sources.USER);
+          return true;
         }
       }
     },
@@ -10757,7 +10769,7 @@ var _link = __webpack_require__(28);
 
 var _link2 = _interopRequireDefault(_link);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _icons = __webpack_require__(47);
 
@@ -12093,7 +12105,7 @@ var _base = __webpack_require__(49);
 
 var _base2 = _interopRequireDefault(_base);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _icons = __webpack_require__(47);
 
@@ -12318,7 +12330,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -12326,7 +12338,7 @@ var _emitter = __webpack_require__(8);
 
 var _emitter2 = _interopRequireDefault(_emitter);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _selection2 = _interopRequireDefault(_selection);
 
@@ -12482,7 +12494,7 @@ var _emitter = __webpack_require__(8);
 
 var _emitter2 = _interopRequireDefault(_emitter);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _selection2 = _interopRequireDefault(_selection);
 
@@ -12825,11 +12837,11 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _selection2 = _interopRequireDefault(_selection);
 
@@ -13183,7 +13195,7 @@ describe('Editor', function () {
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _selection2 = _interopRequireDefault(_selection);
 
@@ -13697,7 +13709,7 @@ var _snow = __webpack_require__(76);
 
 var _snow2 = _interopRequireDefault(_snow);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -14466,7 +14478,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14515,7 +14527,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14569,7 +14581,7 @@ describe('Link', function () {
 "use strict";
 
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14606,7 +14618,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14655,7 +14667,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14811,7 +14823,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14851,7 +14863,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -14884,7 +14896,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _editor = __webpack_require__(14);
+var _editor = __webpack_require__(15);
 
 var _editor2 = _interopRequireDefault(_editor);
 
@@ -15069,7 +15081,7 @@ var _quillDelta = __webpack_require__(1);
 
 var _quillDelta2 = _interopRequireDefault(_quillDelta);
 
-var _selection = __webpack_require__(15);
+var _selection = __webpack_require__(14);
 
 var _core = __webpack_require__(30);
 
@@ -15477,6 +15489,8 @@ var _keyboard = __webpack_require__(25);
 
 var _keyboard2 = _interopRequireDefault(_keyboard);
 
+var _selection = __webpack_require__(14);
+
 var _quill = __webpack_require__(5);
 
 var _quill2 = _interopRequireDefault(_quill);
@@ -15594,7 +15608,7 @@ describe('Keyboard', function () {
       }, _keyboard.SHORTKEY, true), binding)).toBe(true);
     });
 
-    it("List autostart", function () {
+    it("Preserve format on list autostart", function () {
       var originalDelta = new _quillDelta2.default().insert('1.', { bold: true });
       var expectedDeltaAfterInput = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" });
 
@@ -15605,6 +15619,33 @@ describe('Keyboard', function () {
       quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 32 }));
       quill.insertText(quill.getLength() - 1, "A");
       expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+    });
+
+    it("Delete list line", function () {
+      var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('B', { bold: true }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" });
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+      expect(quill.getSelection()).toEqual(new _selection.Range(1, 0));
+    });
+    it("Delete first and only list line", function () {
+      var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+      expect(quill.getSelection()).toEqual(new _selection.Range(0, 0));
     });
   });
 });
