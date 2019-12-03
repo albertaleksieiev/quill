@@ -159,5 +159,21 @@ describe('Keyboard', function() {
         expect(quill.getSelection()).toEqual(new Range(0, 0));
 
     });
+    it("Stop list on hift+Enter on empty line", function() {
+        let originalDelta = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" })
+                                        .insert('\n', { list: "ordered" });
+        let expectedDeltaAfterInput = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" })
+                                        .insert('\n');
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13, shiftKey: true }))// enter
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+
+    });
   });
 });

@@ -4874,6 +4874,7 @@ Keyboard.DEFAULTS = {
       key: Keyboard.keys.ENTER,
       collapsed: true,
       format: ['list'],
+      shiftKey: null,
       empty: true,
       handler: function handler(range, context) {
         this.quill.format('indent', "-1", _quill2.default.sources.USER);

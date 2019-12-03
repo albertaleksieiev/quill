@@ -4874,6 +4874,7 @@ Keyboard.DEFAULTS = {
       key: Keyboard.keys.ENTER,
       collapsed: true,
       format: ['list'],
+      shiftKey: null,
       empty: true,
       handler: function handler(range, context) {
         this.quill.format('indent', "-1", _quill2.default.sources.USER);
@@ -15646,6 +15647,17 @@ describe('Keyboard', function () {
       quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
       expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
       expect(quill.getSelection()).toEqual(new _selection.Range(0, 0));
+    });
+    it("Stop list on hift+Enter on empty line", function () {
+      var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13, shiftKey: true })); // enter
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
     });
   });
 });
