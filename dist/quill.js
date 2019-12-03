@@ -9804,10 +9804,7 @@ var Clipboard = function (_Module) {
         }
       } else {
         var paste = this.convert(html);
-        if (this.shouldAddNewlineBeforePaste(paste, index)) {
-          paste = new _quillDelta2.default().insert("\n").concat(paste);
-        }
-        applyFormatToDelta(paste, this.quill.getFormat(index));
+        paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
@@ -9828,10 +9825,7 @@ var Clipboard = function (_Module) {
       this.quill.selection.update(_quill2.default.sources.SILENT);
       setTimeout(function () {
         var pasteDelta = _this2.convert();
-        if (_this2.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
-          pasteDelta = new _quillDelta2.default().insert("\n").concat(pasteDelta);
-        }
-        applyFormatToDelta(pasteDelta, _this2.quill.getFormat(range.index));
+        pasteDelta = _this2.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
         delta = delta.concat(pasteDelta).delete(range.length);
         _this2.quill.updateContents(delta, _quill2.default.sources.USER);
         // range.length contributes to delta.length()
@@ -9869,6 +9863,15 @@ var Clipboard = function (_Module) {
         }
       });
       return [elementMatchers, textMatchers];
+    }
+  }, {
+    key: 'preprocessDeltaBeforePasteIntoIndex',
+    value: function preprocessDeltaBeforePasteIntoIndex(delta, index) {
+      if (this.shouldAddNewlineBeforePaste(delta, index)) {
+        delta = new _quillDelta2.default().insert("\n").concat(delta);
+      }
+      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"]);
+      return delta;
     }
   }, {
     key: 'shouldAddNewlineBeforePaste',
@@ -10096,6 +10099,7 @@ function matchText(node, delta) {
 }
 
 function applyFormatToDelta(delta, format) {
+  var forceAttributes = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -10108,7 +10112,7 @@ function applyFormatToDelta(delta, format) {
         op.attributes = format;
       } else {
         Object.keys(format).forEach(function (name) {
-          if (op.attributes[name] == null) {
+          if (op.attributes[name] == null || forceAttributes.includes(name)) {
             op.attributes[name] = format[name];
           }
         });

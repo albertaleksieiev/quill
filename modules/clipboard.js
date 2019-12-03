@@ -103,10 +103,7 @@ class Clipboard extends Module {
       }
     } else {
       var paste = this.convert(html);
-      if (this.shouldAddNewlineBeforePaste(paste, index)) {
-        paste = new Delta().insert("\n").concat(paste);
-      }
-      applyFormatToDelta(paste, this.quill.getFormat(index))
+      paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
       this.quill.updateContents(new Delta().retain(index).concat(paste), source);
       if (this.quill.hasFocus()) {
         this.quill.setSelection(index + paste.length(), Quill.sources.SILENT);
@@ -124,10 +121,7 @@ class Clipboard extends Module {
     this.quill.selection.update(Quill.sources.SILENT);
     setTimeout(() => {
       let pasteDelta = this.convert();
-      if (this.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
-        pasteDelta = new Delta().insert("\n").concat(pasteDelta);
-      }
-      applyFormatToDelta(pasteDelta, this.quill.getFormat(range.index))
+      pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
       delta = delta.concat(pasteDelta).delete(range.length);
       this.quill.updateContents(delta, Quill.sources.USER);
       // range.length contributes to delta.length()
@@ -158,6 +152,14 @@ class Clipboard extends Module {
       }
     });
     return [elementMatchers, textMatchers];
+  }
+
+  preprocessDeltaBeforePasteIntoIndex(delta, index) {
+      if (this.shouldAddNewlineBeforePaste(delta, index)) {
+        delta = new Delta().insert("\n").concat(delta);
+      }
+      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"])
+      return delta;
   }
 
   shouldAddNewlineBeforePaste(pasteDelta, index) {
@@ -381,13 +383,13 @@ function matchText(node, delta) {
   return delta.insert(text);
 }
 
-function applyFormatToDelta(delta, format) {
+function applyFormatToDelta(delta, format, forceAttributes = []) {
   for (let op of delta.ops) {
     if (op.attributes == null){
       op.attributes = format;
     } else {
       Object.keys(format).forEach(function (name) {
-        if (op.attributes[name] == null) {
+        if (op.attributes[name] == null || forceAttributes.includes(name)) {
           op.attributes[name] = format[name];
         }
       });
