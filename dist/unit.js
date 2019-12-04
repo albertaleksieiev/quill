@@ -4862,10 +4862,10 @@ Keyboard.DEFAULTS = {
       handler: function handler(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         }
       }
     },
@@ -15670,6 +15670,19 @@ describe('Keyboard', function () {
     it("Delete list line", function () {
       var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('B', { bold: true }).insert('\n', { list: "ordered" });
       var expectedDeltaAfterInput = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" });
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+      expect(quill.getSelection()).toEqual(new _selection.Range(1, 0));
+    });
+    it("Delete first and only list line when there is text before it", function () {
+      var originalDelta = new _quillDelta2.default().insert('1\n').insert('A', { bold: true }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('1\n');
 
       var quill = this.initialize(_quill2.default, '');
       quill.setContents(originalDelta);

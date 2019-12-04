@@ -144,6 +144,22 @@ describe('Keyboard', function() {
         expect(quill.getSelection()).toEqual(new Range(1, 0));
 
     });
+    it("Delete first and only list line when there is text before it", function() {
+        let originalDelta = new Delta().insert('1\n')
+                                        .insert('A', { bold: true })
+                                        .insert('\n', { list: "ordered" });
+        let expectedDeltaAfterInput = new Delta().insert('1\n');
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        expect(quill.getSelection()).toEqual(new Range(1, 0));
+
+    });
     it("Delete first and only list line", function() {
         let originalDelta = new Delta().insert('A', { bold: true })
                                         .insert('\n', { list: "ordered" });

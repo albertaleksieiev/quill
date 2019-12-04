@@ -4862,10 +4862,10 @@ Keyboard.DEFAULTS = {
       handler: function handler(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         }
       }
     },

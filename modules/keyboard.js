@@ -219,10 +219,10 @@ Keyboard.DEFAULTS = {
       handler: function(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, Quill.sources.USER);
-          return true
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, Quill.sources.USER);
-          return true
+          handleBackspace.call(this, range, context);
         }
       }
     },
