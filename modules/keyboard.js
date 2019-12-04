@@ -144,12 +144,14 @@ class Keyboard extends Module {
         return binding.handler.call(this, range, curContext) !== true;
       });
       if (prevented) {
-        // On iOS if we pervent keydown event, keyboard will think that it didn't happen
+        // On iOS if we prevent keydown event, keyboard will think that it didn't happen
         // and in case of Enter key won't enable Shift.
         // Here we allow default, but afterwards prevent actual input in beforeinput
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         if (isIOS && evt.keyCode == 13) {
           this.preventNextInsertParagraph = true;
+        } else if (isIOS && evt.keyCode == 32) {
+          this.preventNextInsertSpace = true;
         } else {
           evt.preventDefault();
         }
@@ -158,6 +160,10 @@ class Keyboard extends Module {
     this.quill.root.addEventListener('beforeinput', (evt) => {
       if (this.preventNextInsertParagraph && evt.inputType == "insertParagraph") {
           this.preventNextInsertParagraph = false;
+          evt.preventDefault();
+      }
+      if (this.preventNextInsertSpace && evt.inputType == "insertText" && evt.data == " ") {
+          this.preventNextInsertSpace = false;
           evt.preventDefault();
       }
     });
