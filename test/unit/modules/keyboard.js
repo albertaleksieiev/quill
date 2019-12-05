@@ -191,5 +191,20 @@ describe('Keyboard', function() {
         expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
 
     });
+    it("Save format after tab", function(done) {
+        let originalDelta = new Delta().insert('ABC', { bold: true });
+        let expectedDeltaAfterInput = new Delta().insert('ABC\t123', { bold: true }).insert('\n');
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 9}))// tab
+        document.execCommand("insertText", false, "123");
+        setTimeout(() => {
+          expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+          done();
+        }, 2);
+    });
   });
 });

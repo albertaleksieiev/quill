@@ -4882,9 +4882,9 @@ Keyboard.DEFAULTS = {
     },
     'tab': {
       key: Keyboard.keys.TAB,
-      handler: function handler(range) {
+      handler: function handler(range, context) {
         this.quill.history.cutoff();
-        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t');
+        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t', context.format);
         this.quill.updateContents(delta, _quill2.default.sources.USER);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index + 1, _quill2.default.sources.SILENT);
@@ -4943,8 +4943,6 @@ Keyboard.DEFAULTS = {
       format: { list: false },
       prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function handler(range, context) {
-        var _this3 = this;
-
         var length = context.prefix.length;
 
         var _quill$getLine7 = this.quill.getLine(range.index),
@@ -4971,13 +4969,7 @@ Keyboard.DEFAULTS = {
         this.quill.history.cutoff();
         var delta = new _quillDelta2.default().retain(range.index - offset).delete(length + 1).retain(line.length() - 2 - offset).retain(1, { list: value });
         this.quill.updateContents(delta, _quill2.default.sources.USER);
-        Object.keys(context.format).forEach(function (name) {
-          if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
-            return;
-          }
-          _this3.quill.format(name, context.format[name]);
-        });
-
+        applyFormatFromContext.call(this, context);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, _quill2.default.sources.SILENT);
       }
@@ -5004,6 +4996,17 @@ Keyboard.DEFAULTS = {
     'embed right shift': makeEmbedArrowHandler(Keyboard.keys.RIGHT, true)
   }
 };
+
+function applyFormatFromContext(context) {
+  var _this3 = this;
+
+  Object.keys(context.format).forEach(function (name) {
+    if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
+      return;
+    }
+    _this3.quill.format(name, context.format[name]);
+  });
+}
 
 function makeEmbedArrowHandler(key, shiftKey) {
   var _ref3;
@@ -15791,6 +15794,21 @@ describe('Keyboard', function () {
 
       quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13, shiftKey: true })); // enter
       expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+    });
+    it("Save format after tab", function (done) {
+      var originalDelta = new _quillDelta2.default().insert('ABC', { bold: true });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('ABC\t123', { bold: true }).insert('\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 9 })); // tab
+      document.execCommand("insertText", false, "123");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
     });
   });
 });

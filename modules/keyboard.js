@@ -239,11 +239,11 @@ Keyboard.DEFAULTS = {
     },
     'tab': {
       key: Keyboard.keys.TAB,
-      handler: function(range) {
+      handler: function(range, context) {
         this.quill.history.cutoff();
         let delta = new Delta().retain(range.index)
                                .delete(range.length)
-                               .insert('\t');
+                               .insert('\t', context.format);
         this.quill.updateContents(delta, Quill.sources.USER);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index + 1, Quill.sources.SILENT);
@@ -324,13 +324,7 @@ Keyboard.DEFAULTS = {
                                .retain(line.length() - 2 - offset)
                                .retain(1, { list: value });
         this.quill.updateContents(delta, Quill.sources.USER);
-        Object.keys(context.format).forEach((name) => {
-          if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
-            return;
-          }
-          this.quill.format(name, context.format[name]);
-        });
-
+        applyFormatFromContext.call(this, context);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, Quill.sources.SILENT);
       }
@@ -356,6 +350,15 @@ Keyboard.DEFAULTS = {
     'embed right shift': makeEmbedArrowHandler(Keyboard.keys.RIGHT, true)
   }
 };
+
+function applyFormatFromContext(context) {
+  Object.keys(context.format).forEach((name) => {
+    if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
+      return;
+    }
+    this.quill.format(name, context.format[name]);
+  });
+}
 
 function makeEmbedArrowHandler(key, shiftKey) {
   const where = key === Keyboard.keys.LEFT ? 'prefix' : 'suffix';
