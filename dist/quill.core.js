@@ -5343,6 +5343,7 @@ var Cursor = function (_Parchment$Embed) {
       while (this.domNode.lastChild != null && this.domNode.lastChild !== this.textNode) {
         this.domNode.parentNode.insertBefore(this.domNode.lastChild, this.domNode);
       }
+      var cursorPositionCorrection = -1;
       if (this.textNode.data !== Cursor.CONTENTS) {
         var text = this.textNode.data.split(Cursor.CONTENTS).join('');
         if (this.next instanceof _text2.default) {
@@ -5350,6 +5351,10 @@ var Cursor = function (_Parchment$Embed) {
           this.next.insertAt(0, text);
           this.textNode.data = Cursor.CONTENTS;
         } else {
+          var indexOfCursor = this.textNode.data.indexOf(Cursor.CONTENTS);
+          if (indexOfCursor == -1 || indexOfCursor >= start) {
+            cursorPositionCorrection = 0;
+          }
           this.textNode.data = text;
           this.parent.insertBefore(_parchment2.default.create(this.textNode), this);
           this.textNode = document.createTextNode(Cursor.CONTENTS);
@@ -5359,7 +5364,7 @@ var Cursor = function (_Parchment$Embed) {
       this.remove();
       if (start != null) {
         var _map = [start, end].map(function (offset) {
-          return Math.max(0, Math.min(restoreText.data.length, offset - 1));
+          return Math.max(0, Math.min(restoreText.data.length, offset + cursorPositionCorrection));
         });
 
         var _map2 = _slicedToArray(_map, 2);

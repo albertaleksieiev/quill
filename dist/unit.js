@@ -5343,6 +5343,7 @@ var Cursor = function (_Parchment$Embed) {
       while (this.domNode.lastChild != null && this.domNode.lastChild !== this.textNode) {
         this.domNode.parentNode.insertBefore(this.domNode.lastChild, this.domNode);
       }
+      var cursorPositionCorrection = -1;
       if (this.textNode.data !== Cursor.CONTENTS) {
         var text = this.textNode.data.split(Cursor.CONTENTS).join('');
         if (this.next instanceof _text2.default) {
@@ -5350,6 +5351,10 @@ var Cursor = function (_Parchment$Embed) {
           this.next.insertAt(0, text);
           this.textNode.data = Cursor.CONTENTS;
         } else {
+          var indexOfCursor = this.textNode.data.indexOf(Cursor.CONTENTS);
+          if (indexOfCursor == -1 || indexOfCursor >= start) {
+            cursorPositionCorrection = 0;
+          }
           this.textNode.data = text;
           this.parent.insertBefore(_parchment2.default.create(this.textNode), this);
           this.textNode = document.createTextNode(Cursor.CONTENTS);
@@ -5359,7 +5364,7 @@ var Cursor = function (_Parchment$Embed) {
       this.remove();
       if (start != null) {
         var _map = [start, end].map(function (offset) {
-          return Math.max(0, Math.min(restoreText.data.length, offset - 1));
+          return Math.max(0, Math.min(restoreText.data.length, offset + cursorPositionCorrection));
         });
 
         var _map2 = _slicedToArray(_map, 2);
@@ -12338,6 +12343,8 @@ __webpack_require__(149);
 
 __webpack_require__(150);
 
+__webpack_require__(151);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 _quill2.default.register(_code2.default, true); // Syntax version will otherwise be registered
@@ -12637,6 +12644,74 @@ describe('Scroll', function () {
 "use strict";
 
 
+var _quill = __webpack_require__(5);
+
+var _quill2 = _interopRequireDefault(_quill);
+
+var _quillDelta = __webpack_require__(1);
+
+var _quillDelta2 = _interopRequireDefault(_quillDelta);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+describe('Cursor', function () {
+  it("Restore after input after cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Put cursor after invisible space
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 1, cursor.childNodes[0], 1);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+  it("Restore after input before cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Put cursor before invisible space
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 0, cursor.childNodes[0], 0);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+  it("Restore after input instead of cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Select invisible space inside cursor
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 0, cursor.childNodes[0], 1);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+});
+
+/***/ }),
+/* 131 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var _parchment = __webpack_require__(0);
 
 var _parchment2 = _interopRequireDefault(_parchment);
@@ -12724,7 +12799,7 @@ describe('Block', function () {
 });
 
 /***/ }),
-/* 131 */
+/* 132 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12813,7 +12888,7 @@ describe('Block Embed', function () {
 });
 
 /***/ }),
-/* 132 */
+/* 133 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12850,7 +12925,7 @@ describe('Inline', function () {
 });
 
 /***/ }),
-/* 133 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13212,7 +13287,7 @@ describe('Editor', function () {
 });
 
 /***/ }),
-/* 134 */
+/* 135 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13702,7 +13777,7 @@ describe('Selection', function () {
 });
 
 /***/ }),
-/* 135 */
+/* 136 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14493,7 +14568,7 @@ describe('Quill', function () {
 });
 
 /***/ }),
-/* 136 */
+/* 137 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14542,7 +14617,7 @@ describe('Color', function () {
 });
 
 /***/ }),
-/* 137 */
+/* 138 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14600,7 +14675,7 @@ describe('Link', function () {
 });
 
 /***/ }),
-/* 138 */
+/* 139 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14633,7 +14708,7 @@ describe('Script', function () {
 });
 
 /***/ }),
-/* 139 */
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14682,7 +14757,7 @@ describe('Align', function () {
 });
 
 /***/ }),
-/* 140 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14838,7 +14913,7 @@ describe('Code', function () {
 });
 
 /***/ }),
-/* 141 */
+/* 142 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14878,7 +14953,7 @@ describe('Header', function () {
 });
 
 /***/ }),
-/* 142 */
+/* 143 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14911,7 +14986,7 @@ describe('Indent', function () {
 });
 
 /***/ }),
-/* 143 */
+/* 144 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15072,7 +15147,7 @@ describe('List', function () {
 });
 
 /***/ }),
-/* 144 */
+/* 145 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15096,7 +15171,7 @@ describe('Bold', function () {
 });
 
 /***/ }),
-/* 145 */
+/* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15326,7 +15401,7 @@ describe('Clipboard', function () {
 });
 
 /***/ }),
-/* 146 */
+/* 147 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15525,7 +15600,7 @@ describe('History', function () {
 });
 
 /***/ }),
-/* 147 */
+/* 148 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15721,7 +15796,7 @@ describe('Keyboard', function () {
 });
 
 /***/ }),
-/* 148 */
+/* 149 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15819,7 +15894,7 @@ describe('Toolbar', function () {
 });
 
 /***/ }),
-/* 149 */
+/* 150 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15978,7 +16053,7 @@ describe('Picker', function () {
 });
 
 /***/ }),
-/* 150 */
+/* 151 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
