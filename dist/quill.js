@@ -4785,6 +4785,26 @@ var Keyboard = function (_Module) {
           return binding.handler.call(_this2, range, curContext) !== true;
         });
         if (prevented) {
+          // On iOS if we prevent keydown event, keyboard will think that it didn't happen
+          // and in case of Enter key won't enable Shift.
+          // Here we allow default, but afterwards prevent actual input in beforeinput
+          var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          if (isIOS && evt.keyCode == 13) {
+            _this2.preventNextInsertParagraph = true;
+          } else if (isIOS && evt.keyCode == 32) {
+            _this2.preventNextInsertSpace = true;
+          } else {
+            evt.preventDefault();
+          }
+        }
+      });
+      this.quill.root.addEventListener('beforeinput', function (evt) {
+        if (_this2.preventNextInsertParagraph && evt.inputType == "insertParagraph") {
+          _this2.preventNextInsertParagraph = false;
+          evt.preventDefault();
+        }
+        if (_this2.preventNextInsertSpace && evt.inputType == "insertText" && evt.data == " ") {
+          _this2.preventNextInsertSpace = false;
           evt.preventDefault();
         }
       });
@@ -4842,10 +4862,10 @@ Keyboard.DEFAULTS = {
       handler: function handler(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         }
       }
     },
@@ -4862,9 +4882,9 @@ Keyboard.DEFAULTS = {
     },
     'tab': {
       key: Keyboard.keys.TAB,
-      handler: function handler(range) {
+      handler: function handler(range, context) {
         this.quill.history.cutoff();
-        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t');
+        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t', context.format);
         this.quill.updateContents(delta, _quill2.default.sources.USER);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index + 1, _quill2.default.sources.SILENT);
@@ -4874,6 +4894,7 @@ Keyboard.DEFAULTS = {
       key: Keyboard.keys.ENTER,
       collapsed: true,
       format: ['list'],
+      shiftKey: null,
       empty: true,
       handler: function handler(range, context) {
         this.quill.format('indent', "-1", _quill2.default.sources.USER);
@@ -4922,8 +4943,6 @@ Keyboard.DEFAULTS = {
       format: { list: false },
       prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function handler(range, context) {
-        var _this3 = this;
-
         var length = context.prefix.length;
 
         var _quill$getLine7 = this.quill.getLine(range.index),
@@ -4950,13 +4969,7 @@ Keyboard.DEFAULTS = {
         this.quill.history.cutoff();
         var delta = new _quillDelta2.default().retain(range.index - offset).delete(length + 1).retain(line.length() - 2 - offset).retain(1, { list: value });
         this.quill.updateContents(delta, _quill2.default.sources.USER);
-        Object.keys(context.format).forEach(function (name) {
-          if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
-            return;
-          }
-          _this3.quill.format(name, context.format[name]);
-        });
-
+        applyFormatFromContext.call(this, context);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, _quill2.default.sources.SILENT);
       }
@@ -4983,6 +4996,17 @@ Keyboard.DEFAULTS = {
     'embed right shift': makeEmbedArrowHandler(Keyboard.keys.RIGHT, true)
   }
 };
+
+function applyFormatFromContext(context) {
+  var _this3 = this;
+
+  Object.keys(context.format).forEach(function (name) {
+    if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
+      return;
+    }
+    _this3.quill.format(name, context.format[name]);
+  });
+}
 
 function makeEmbedArrowHandler(key, shiftKey) {
   var _ref3;
@@ -5322,6 +5346,7 @@ var Cursor = function (_Parchment$Embed) {
       while (this.domNode.lastChild != null && this.domNode.lastChild !== this.textNode) {
         this.domNode.parentNode.insertBefore(this.domNode.lastChild, this.domNode);
       }
+      var cursorPositionCorrection = -1;
       if (this.textNode.data !== Cursor.CONTENTS) {
         var text = this.textNode.data.split(Cursor.CONTENTS).join('');
         if (this.next instanceof _text2.default) {
@@ -5329,6 +5354,10 @@ var Cursor = function (_Parchment$Embed) {
           this.next.insertAt(0, text);
           this.textNode.data = Cursor.CONTENTS;
         } else {
+          var indexOfCursor = this.textNode.data.indexOf(Cursor.CONTENTS);
+          if (indexOfCursor == -1 || indexOfCursor >= start) {
+            cursorPositionCorrection = 0;
+          }
           this.textNode.data = text;
           this.parent.insertBefore(_parchment2.default.create(this.textNode), this);
           this.textNode = document.createTextNode(Cursor.CONTENTS);
@@ -5338,7 +5367,7 @@ var Cursor = function (_Parchment$Embed) {
       this.remove();
       if (start != null) {
         var _map = [start, end].map(function (offset) {
-          return Math.max(0, Math.min(restoreText.data.length, offset - 1));
+          return Math.max(0, Math.min(restoreText.data.length, offset + cursorPositionCorrection));
         });
 
         var _map2 = _slicedToArray(_map, 2);
@@ -9803,10 +9832,7 @@ var Clipboard = function (_Module) {
         }
       } else {
         var paste = this.convert(html);
-        if (this.shouldAddNewlineBeforePaste(paste, index)) {
-          paste = new _quillDelta2.default().insert("\n").concat(paste);
-        }
-        applyFormatToDelta(paste, this.quill.getFormat(index));
+        paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
@@ -9827,10 +9853,7 @@ var Clipboard = function (_Module) {
       this.quill.selection.update(_quill2.default.sources.SILENT);
       setTimeout(function () {
         var pasteDelta = _this2.convert();
-        if (_this2.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
-          pasteDelta = new _quillDelta2.default().insert("\n").concat(pasteDelta);
-        }
-        applyFormatToDelta(pasteDelta, _this2.quill.getFormat(range.index));
+        pasteDelta = _this2.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
         delta = delta.concat(pasteDelta).delete(range.length);
         _this2.quill.updateContents(delta, _quill2.default.sources.USER);
         // range.length contributes to delta.length()
@@ -9868,6 +9891,15 @@ var Clipboard = function (_Module) {
         }
       });
       return [elementMatchers, textMatchers];
+    }
+  }, {
+    key: 'preprocessDeltaBeforePasteIntoIndex',
+    value: function preprocessDeltaBeforePasteIntoIndex(delta, index) {
+      if (this.shouldAddNewlineBeforePaste(delta, index)) {
+        delta = new _quillDelta2.default().insert("\n").concat(delta);
+      }
+      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"]);
+      return delta;
     }
   }, {
     key: 'shouldAddNewlineBeforePaste',
@@ -10095,6 +10127,7 @@ function matchText(node, delta) {
 }
 
 function applyFormatToDelta(delta, format) {
+  var forceAttributes = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -10107,7 +10140,7 @@ function applyFormatToDelta(delta, format) {
         op.attributes = format;
       } else {
         Object.keys(format).forEach(function (name) {
-          if (op.attributes[name] == null) {
+          if (op.attributes[name] == null || forceAttributes.includes(name)) {
             op.attributes[name] = format[name];
           }
         });

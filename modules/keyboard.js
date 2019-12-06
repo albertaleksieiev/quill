@@ -144,9 +144,30 @@ class Keyboard extends Module {
         return binding.handler.call(this, range, curContext) !== true;
       });
       if (prevented) {
-        evt.preventDefault();
+        // On iOS if we prevent keydown event, keyboard will think that it didn't happen
+        // and in case of Enter key won't enable Shift.
+        // Here we allow default, but afterwards prevent actual input in beforeinput
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS && evt.keyCode == 13) {
+          this.preventNextInsertParagraph = true;
+        } else if (isIOS && evt.keyCode == 32) {
+          this.preventNextInsertSpace = true;
+        } else {
+          evt.preventDefault();
+        }
       }
     });
+    this.quill.root.addEventListener('beforeinput', (evt) => {
+      if (this.preventNextInsertParagraph && evt.inputType == "insertParagraph") {
+          this.preventNextInsertParagraph = false;
+          evt.preventDefault();
+      }
+      if (this.preventNextInsertSpace && evt.inputType == "insertText" && evt.data == " ") {
+          this.preventNextInsertSpace = false;
+          evt.preventDefault();
+      }
+    });
+
   }
 }
 
@@ -198,10 +219,10 @@ Keyboard.DEFAULTS = {
       handler: function(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, Quill.sources.USER);
-          return true
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, Quill.sources.USER);
-          return true
+          handleBackspace.call(this, range, context);
         }
       }
     },
@@ -218,11 +239,11 @@ Keyboard.DEFAULTS = {
     },
     'tab': {
       key: Keyboard.keys.TAB,
-      handler: function(range) {
+      handler: function(range, context) {
         this.quill.history.cutoff();
         let delta = new Delta().retain(range.index)
                                .delete(range.length)
-                               .insert('\t');
+                               .insert('\t', context.format);
         this.quill.updateContents(delta, Quill.sources.USER);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index + 1, Quill.sources.SILENT);
@@ -232,6 +253,7 @@ Keyboard.DEFAULTS = {
       key: Keyboard.keys.ENTER,
       collapsed: true,
       format: ['list'],
+      shiftKey: null,
       empty: true,
       handler: function(range, context) {
         this.quill.format('indent', "-1", Quill.sources.USER);
@@ -302,13 +324,7 @@ Keyboard.DEFAULTS = {
                                .retain(line.length() - 2 - offset)
                                .retain(1, { list: value });
         this.quill.updateContents(delta, Quill.sources.USER);
-        Object.keys(context.format).forEach((name) => {
-          if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
-            return;
-          }
-          this.quill.format(name, context.format[name]);
-        });
-
+        applyFormatFromContext.call(this, context);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, Quill.sources.SILENT);
       }
@@ -334,6 +350,15 @@ Keyboard.DEFAULTS = {
     'embed right shift': makeEmbedArrowHandler(Keyboard.keys.RIGHT, true)
   }
 };
+
+function applyFormatFromContext(context) {
+  Object.keys(context.format).forEach((name) => {
+    if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
+      return;
+    }
+    this.quill.format(name, context.format[name]);
+  });
+}
 
 function makeEmbedArrowHandler(key, shiftKey) {
   const where = key === Keyboard.keys.LEFT ? 'prefix' : 'suffix';

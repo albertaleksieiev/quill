@@ -19,6 +19,23 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('dangerousPasteDifferentListIntoMiddle', function(done) {
+      this.quill = this.initialize(Quill, '<ul><li>1234</li></ul>');
+      this.quill.clipboard.dangerouslyPasteHTML(2, "<ul><li>!</li></ul>")
+      setTimeout(() => {
+        expect(this.quill.root).toEqualHTML('<ul><li>12</li><li>!</li><li>34</li></ul>');
+        done();
+      }, 2);
+    });
+    it('dangerousPasteDifferentListIntoEnd', function(done) {
+      this.quill = this.initialize(Quill, '<ul><li>1234</li></ul>');
+      this.quill.clipboard.dangerouslyPasteHTML(4, "<ul><li>!</li></ul>")
+      setTimeout(() => {
+        expect(this.quill.root).toEqualHTML('<ul><li>1234</li><li>!</li><li><br></li></ul>');
+        done();
+      }, 2);
+    });
+
     it('dangerousPasteWithNewlines', function(done) {
       this.quill = this.initialize(Quill, '');
       this.quill.clipboard.dangerouslyPasteHTML(0, '<strike>123</strike>\n<blockquote type="cite">456</blockquote>');

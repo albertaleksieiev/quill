@@ -4785,6 +4785,26 @@ var Keyboard = function (_Module) {
           return binding.handler.call(_this2, range, curContext) !== true;
         });
         if (prevented) {
+          // On iOS if we prevent keydown event, keyboard will think that it didn't happen
+          // and in case of Enter key won't enable Shift.
+          // Here we allow default, but afterwards prevent actual input in beforeinput
+          var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          if (isIOS && evt.keyCode == 13) {
+            _this2.preventNextInsertParagraph = true;
+          } else if (isIOS && evt.keyCode == 32) {
+            _this2.preventNextInsertSpace = true;
+          } else {
+            evt.preventDefault();
+          }
+        }
+      });
+      this.quill.root.addEventListener('beforeinput', function (evt) {
+        if (_this2.preventNextInsertParagraph && evt.inputType == "insertParagraph") {
+          _this2.preventNextInsertParagraph = false;
+          evt.preventDefault();
+        }
+        if (_this2.preventNextInsertSpace && evt.inputType == "insertText" && evt.data == " ") {
+          _this2.preventNextInsertSpace = false;
           evt.preventDefault();
         }
       });
@@ -4842,10 +4862,10 @@ Keyboard.DEFAULTS = {
       handler: function handler(range, context) {
         if (context.format.indent != null) {
           this.quill.format('indent', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         } else if (context.format.list != null) {
           this.quill.format('list', null, _quill2.default.sources.USER);
-          return true;
+          handleBackspace.call(this, range, context);
         }
       }
     },
@@ -4862,9 +4882,9 @@ Keyboard.DEFAULTS = {
     },
     'tab': {
       key: Keyboard.keys.TAB,
-      handler: function handler(range) {
+      handler: function handler(range, context) {
         this.quill.history.cutoff();
-        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t');
+        var delta = new _quillDelta2.default().retain(range.index).delete(range.length).insert('\t', context.format);
         this.quill.updateContents(delta, _quill2.default.sources.USER);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index + 1, _quill2.default.sources.SILENT);
@@ -4874,6 +4894,7 @@ Keyboard.DEFAULTS = {
       key: Keyboard.keys.ENTER,
       collapsed: true,
       format: ['list'],
+      shiftKey: null,
       empty: true,
       handler: function handler(range, context) {
         this.quill.format('indent', "-1", _quill2.default.sources.USER);
@@ -4922,8 +4943,6 @@ Keyboard.DEFAULTS = {
       format: { list: false },
       prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function handler(range, context) {
-        var _this3 = this;
-
         var length = context.prefix.length;
 
         var _quill$getLine7 = this.quill.getLine(range.index),
@@ -4950,13 +4969,7 @@ Keyboard.DEFAULTS = {
         this.quill.history.cutoff();
         var delta = new _quillDelta2.default().retain(range.index - offset).delete(length + 1).retain(line.length() - 2 - offset).retain(1, { list: value });
         this.quill.updateContents(delta, _quill2.default.sources.USER);
-        Object.keys(context.format).forEach(function (name) {
-          if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
-            return;
-          }
-          _this3.quill.format(name, context.format[name]);
-        });
-
+        applyFormatFromContext.call(this, context);
         this.quill.history.cutoff();
         this.quill.setSelection(range.index - length, _quill2.default.sources.SILENT);
       }
@@ -4983,6 +4996,17 @@ Keyboard.DEFAULTS = {
     'embed right shift': makeEmbedArrowHandler(Keyboard.keys.RIGHT, true)
   }
 };
+
+function applyFormatFromContext(context) {
+  var _this3 = this;
+
+  Object.keys(context.format).forEach(function (name) {
+    if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) == null) {
+      return;
+    }
+    _this3.quill.format(name, context.format[name]);
+  });
+}
 
 function makeEmbedArrowHandler(key, shiftKey) {
   var _ref3;
@@ -5322,6 +5346,7 @@ var Cursor = function (_Parchment$Embed) {
       while (this.domNode.lastChild != null && this.domNode.lastChild !== this.textNode) {
         this.domNode.parentNode.insertBefore(this.domNode.lastChild, this.domNode);
       }
+      var cursorPositionCorrection = -1;
       if (this.textNode.data !== Cursor.CONTENTS) {
         var text = this.textNode.data.split(Cursor.CONTENTS).join('');
         if (this.next instanceof _text2.default) {
@@ -5329,6 +5354,10 @@ var Cursor = function (_Parchment$Embed) {
           this.next.insertAt(0, text);
           this.textNode.data = Cursor.CONTENTS;
         } else {
+          var indexOfCursor = this.textNode.data.indexOf(Cursor.CONTENTS);
+          if (indexOfCursor == -1 || indexOfCursor >= start) {
+            cursorPositionCorrection = 0;
+          }
           this.textNode.data = text;
           this.parent.insertBefore(_parchment2.default.create(this.textNode), this);
           this.textNode = document.createTextNode(Cursor.CONTENTS);
@@ -5338,7 +5367,7 @@ var Cursor = function (_Parchment$Embed) {
       this.remove();
       if (start != null) {
         var _map = [start, end].map(function (offset) {
-          return Math.max(0, Math.min(restoreText.data.length, offset - 1));
+          return Math.max(0, Math.min(restoreText.data.length, offset + cursorPositionCorrection));
         });
 
         var _map2 = _slicedToArray(_map, 2);
@@ -9803,10 +9832,7 @@ var Clipboard = function (_Module) {
         }
       } else {
         var paste = this.convert(html);
-        if (this.shouldAddNewlineBeforePaste(paste, index)) {
-          paste = new _quillDelta2.default().insert("\n").concat(paste);
-        }
-        applyFormatToDelta(paste, this.quill.getFormat(index));
+        paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
@@ -9827,10 +9853,7 @@ var Clipboard = function (_Module) {
       this.quill.selection.update(_quill2.default.sources.SILENT);
       setTimeout(function () {
         var pasteDelta = _this2.convert();
-        if (_this2.shouldAddNewlineBeforePaste(pasteDelta, range.index)) {
-          pasteDelta = new _quillDelta2.default().insert("\n").concat(pasteDelta);
-        }
-        applyFormatToDelta(pasteDelta, _this2.quill.getFormat(range.index));
+        pasteDelta = _this2.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
         delta = delta.concat(pasteDelta).delete(range.length);
         _this2.quill.updateContents(delta, _quill2.default.sources.USER);
         // range.length contributes to delta.length()
@@ -9868,6 +9891,15 @@ var Clipboard = function (_Module) {
         }
       });
       return [elementMatchers, textMatchers];
+    }
+  }, {
+    key: 'preprocessDeltaBeforePasteIntoIndex',
+    value: function preprocessDeltaBeforePasteIntoIndex(delta, index) {
+      if (this.shouldAddNewlineBeforePaste(delta, index)) {
+        delta = new _quillDelta2.default().insert("\n").concat(delta);
+      }
+      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"]);
+      return delta;
     }
   }, {
     key: 'shouldAddNewlineBeforePaste',
@@ -10095,6 +10127,7 @@ function matchText(node, delta) {
 }
 
 function applyFormatToDelta(delta, format) {
+  var forceAttributes = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -10107,7 +10140,7 @@ function applyFormatToDelta(delta, format) {
         op.attributes = format;
       } else {
         Object.keys(format).forEach(function (name) {
-          if (op.attributes[name] == null) {
+          if (op.attributes[name] == null || forceAttributes.includes(name)) {
             op.attributes[name] = format[name];
           }
         });
@@ -12313,6 +12346,8 @@ __webpack_require__(149);
 
 __webpack_require__(150);
 
+__webpack_require__(151);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 _quill2.default.register(_code2.default, true); // Syntax version will otherwise be registered
@@ -12612,6 +12647,74 @@ describe('Scroll', function () {
 "use strict";
 
 
+var _quill = __webpack_require__(5);
+
+var _quill2 = _interopRequireDefault(_quill);
+
+var _quillDelta = __webpack_require__(1);
+
+var _quillDelta2 = _interopRequireDefault(_quillDelta);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+describe('Cursor', function () {
+  it("Restore after input after cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Put cursor after invisible space
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 1, cursor.childNodes[0], 1);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+  it("Restore after input before cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Put cursor before invisible space
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 0, cursor.childNodes[0], 0);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+  it("Restore after input instead of cursor", function (done) {
+    var expectedDeltaAfterInput = new _quillDelta2.default().insert('AB', { bold: true }).insert('\n');
+    var quill = this.initialize(_quill2.default, '');
+    quill.format("bold", true);
+    // Select invisible space inside cursor
+    var cursor = document.getElementsByClassName("ql-cursor")[0];
+    window.getSelection().setBaseAndExtent(cursor.childNodes[0], 0, cursor.childNodes[0], 1);
+    document.execCommand("insertText", false, "A");
+    setTimeout(function () {
+      document.execCommand("insertText", false, "B");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    }, 2);
+  });
+});
+
+/***/ }),
+/* 131 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var _parchment = __webpack_require__(0);
 
 var _parchment2 = _interopRequireDefault(_parchment);
@@ -12699,7 +12802,7 @@ describe('Block', function () {
 });
 
 /***/ }),
-/* 131 */
+/* 132 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12788,7 +12891,7 @@ describe('Block Embed', function () {
 });
 
 /***/ }),
-/* 132 */
+/* 133 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12825,7 +12928,7 @@ describe('Inline', function () {
 });
 
 /***/ }),
-/* 133 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13187,7 +13290,7 @@ describe('Editor', function () {
 });
 
 /***/ }),
-/* 134 */
+/* 135 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13677,7 +13780,7 @@ describe('Selection', function () {
 });
 
 /***/ }),
-/* 135 */
+/* 136 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14468,7 +14571,7 @@ describe('Quill', function () {
 });
 
 /***/ }),
-/* 136 */
+/* 137 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14517,7 +14620,7 @@ describe('Color', function () {
 });
 
 /***/ }),
-/* 137 */
+/* 138 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14575,7 +14678,7 @@ describe('Link', function () {
 });
 
 /***/ }),
-/* 138 */
+/* 139 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14608,7 +14711,7 @@ describe('Script', function () {
 });
 
 /***/ }),
-/* 139 */
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14657,7 +14760,7 @@ describe('Align', function () {
 });
 
 /***/ }),
-/* 140 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14813,7 +14916,7 @@ describe('Code', function () {
 });
 
 /***/ }),
-/* 141 */
+/* 142 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14853,7 +14956,7 @@ describe('Header', function () {
 });
 
 /***/ }),
-/* 142 */
+/* 143 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14886,7 +14989,7 @@ describe('Indent', function () {
 });
 
 /***/ }),
-/* 143 */
+/* 144 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15047,7 +15150,7 @@ describe('List', function () {
 });
 
 /***/ }),
-/* 144 */
+/* 145 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15071,7 +15174,7 @@ describe('Bold', function () {
 });
 
 /***/ }),
-/* 145 */
+/* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15107,51 +15210,72 @@ describe('Clipboard', function () {
       }, 2);
     });
 
-    it('dangerousPasteWithNewlines', function (done) {
+    it('dangerousPasteDifferentListIntoMiddle', function (done) {
       var _this2 = this;
+
+      this.quill = this.initialize(_core2.default, '<ul><li>1234</li></ul>');
+      this.quill.clipboard.dangerouslyPasteHTML(2, "<ul><li>!</li></ul>");
+      setTimeout(function () {
+        expect(_this2.quill.root).toEqualHTML('<ul><li>12</li><li>!</li><li>34</li></ul>');
+        done();
+      }, 2);
+    });
+    it('dangerousPasteDifferentListIntoEnd', function (done) {
+      var _this3 = this;
+
+      this.quill = this.initialize(_core2.default, '<ul><li>1234</li></ul>');
+      this.quill.clipboard.dangerouslyPasteHTML(4, "<ul><li>!</li></ul>");
+      setTimeout(function () {
+        expect(_this3.quill.root).toEqualHTML('<ul><li>1234</li><li>!</li><li><br></li></ul>');
+        done();
+      }, 2);
+    });
+
+    it('dangerousPasteWithNewlines', function (done) {
+      var _this4 = this;
 
       this.quill = this.initialize(_core2.default, '');
       this.quill.clipboard.dangerouslyPasteHTML(0, '<strike>123</strike>\n<blockquote type="cite">456</blockquote>');
       setTimeout(function () {
-        expect(_this2.quill.root).toEqualHTML('<p>123</p><blockquote>456</blockquote><p><br></p>');
+        expect(_this4.quill.root).toEqualHTML('<p>123</p><blockquote>456</blockquote><p><br></p>');
         done();
       }, 2);
     });
 
     it('paste', function (done) {
-      var _this3 = this;
+      var _this5 = this;
 
       this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this3.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
-        expect(_this3.quill.getSelection()).toEqual(new _selection.Range(3));
+        expect(_this5.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
+        expect(_this5.quill.getSelection()).toEqual(new _selection.Range(3));
         done();
       }, 2);
     });
 
     it('paste in Bold', function (done) {
-      var _this4 = this;
+      var _this6 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA", { bold: true }));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = 'B';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this4.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
+        expect(_this6.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
         done();
       }, 2);
     });
 
     it('paste list', function (done) {
-      var _this5 = this;
+      var _this7 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA"));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this5.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
+        expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
         done();
       }, 2);
     });
@@ -15280,7 +15404,7 @@ describe('Clipboard', function () {
 });
 
 /***/ }),
-/* 146 */
+/* 147 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15479,7 +15603,7 @@ describe('History', function () {
 });
 
 /***/ }),
-/* 147 */
+/* 148 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15634,6 +15758,19 @@ describe('Keyboard', function () {
       expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
       expect(quill.getSelection()).toEqual(new _selection.Range(1, 0));
     });
+    it("Delete first and only list line when there is text before it", function () {
+      var originalDelta = new _quillDelta2.default().insert('1\n').insert('A', { bold: true }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('1\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 })); // backspace
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+      expect(quill.getSelection()).toEqual(new _selection.Range(1, 0));
+    });
     it("Delete first and only list line", function () {
       var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" });
       var expectedDeltaAfterInput = new _quillDelta2.default().insert('\n');
@@ -15647,11 +15784,37 @@ describe('Keyboard', function () {
       expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
       expect(quill.getSelection()).toEqual(new _selection.Range(0, 0));
     });
+    it("Stop list on hift+Enter on empty line", function () {
+      var originalDelta = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('\n', { list: "ordered" });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('A', { bold: true }).insert('\n', { list: "ordered" }).insert('\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13, shiftKey: true })); // enter
+      expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+    });
+    it("Save format after tab", function (done) {
+      var originalDelta = new _quillDelta2.default().insert('ABC', { bold: true });
+      var expectedDeltaAfterInput = new _quillDelta2.default().insert('ABC\t123', { bold: true }).insert('\n');
+
+      var quill = this.initialize(_quill2.default, '');
+      quill.setContents(originalDelta);
+      quill.setSelection(quill.getLength() - 1, 0);
+
+      quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 9 })); // tab
+      document.execCommand("insertText", false, "123");
+      setTimeout(function () {
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+        done();
+      }, 2);
+    });
   });
 });
 
 /***/ }),
-/* 148 */
+/* 149 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15749,7 +15912,7 @@ describe('Toolbar', function () {
 });
 
 /***/ }),
-/* 149 */
+/* 150 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15908,7 +16071,7 @@ describe('Picker', function () {
 });
 
 /***/ }),
-/* 150 */
+/* 151 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

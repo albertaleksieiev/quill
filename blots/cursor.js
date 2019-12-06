@@ -67,6 +67,7 @@ class Cursor extends Parchment.Embed {
     while (this.domNode.lastChild != null && this.domNode.lastChild !== this.textNode) {
       this.domNode.parentNode.insertBefore(this.domNode.lastChild, this.domNode);
     }
+    let cursorPositionCorrection = -1;
     if (this.textNode.data !== Cursor.CONTENTS) {
       let text = this.textNode.data.split(Cursor.CONTENTS).join('');
       if (this.next instanceof TextBlot) {
@@ -74,6 +75,10 @@ class Cursor extends Parchment.Embed {
         this.next.insertAt(0, text);
         this.textNode.data = Cursor.CONTENTS;
       } else {
+        let indexOfCursor = this.textNode.data.indexOf(Cursor.CONTENTS);
+        if (indexOfCursor == -1 || indexOfCursor >= start) {
+          cursorPositionCorrection = 0;
+        }
         this.textNode.data = text;
         this.parent.insertBefore(Parchment.create(this.textNode), this);
         this.textNode = document.createTextNode(Cursor.CONTENTS);
@@ -83,7 +88,7 @@ class Cursor extends Parchment.Embed {
     this.remove();
     if (start != null) {
       [start, end] = [start, end].map(function(offset) {
-        return Math.max(0, Math.min(restoreText.data.length, offset - 1));
+        return Math.max(0, Math.min(restoreText.data.length, offset + cursorPositionCorrection));
       });
       return {
         startNode: restoreText,
