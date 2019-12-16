@@ -4801,7 +4801,9 @@ var Keyboard = function (_Module) {
           // and in case of Enter key won't enable Shift.
           // Here we allow default, but afterwards prevent actual input in beforeinput
           var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          if (isIOS && evt.keyCode == 13) {
+          // Seems like for mac we also need to do the same, otherwise webview won't be scrolled after "Return"
+          var isMac = /Macintosh/.test(navigator.userAgent);
+          if ((isIOS || isMac) && evt.keyCode == 13) {
             _this2.preventNextInsertParagraph = true;
           } else if (isIOS && evt.keyCode == 32) {
             _this2.preventNextInsertSpace = true;
