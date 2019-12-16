@@ -175,6 +175,22 @@ describe('Keyboard', function() {
         expect(quill.getSelection()).toEqual(new Range(0, 0));
 
     });
+    it("Delete indented line when there is one empty before", function() {
+        let originalDelta = new Delta().insert('A', { bold: true })
+                                        .insert('\n', { indent: 1})
+                                        .insert('\n', { indent: 1})
+                                        .insert('\n', { indent: 1});
+        let expectedDeltaAfterInput = new Delta().insert('A', { bold: true })
+                                                  .insert('\n\n', { indent: 1});
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 8 }))// backspace
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+    });
+
     it("Stop list on hift+Enter on empty line", function() {
         let originalDelta = new Delta().insert('A', { bold: true })
                                         .insert('\n', { list: "ordered" })

@@ -399,7 +399,7 @@ function handleBackspace(range, context) {
   let formats = {};
   if (context.offset === 0) {
     let [prev, ] = this.quill.getLine(range.index - 1);
-    if (prev != null && prev.length() > 1) {
+    if (prev != null && prev.length() > 0) {
       let curFormats = line.formats();
       let prevFormats = this.quill.getFormat(range.index-1, 1);
       formats = DeltaOp.attributes.diff(curFormats, prevFormats) || {};
