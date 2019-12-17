@@ -148,7 +148,9 @@ class Keyboard extends Module {
         // and in case of Enter key won't enable Shift.
         // Here we allow default, but afterwards prevent actual input in beforeinput
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (isIOS && evt.keyCode == 13) {
+        // Seems like for mac we also need to do the same, otherwise webview won't be scrolled after "Return"
+        const isMac = /Macintosh/.test(navigator.userAgent);
+        if ((isIOS || isMac) && evt.keyCode == 13) {
           this.preventNextInsertParagraph = true;
         } else if (isIOS && evt.keyCode == 32) {
           this.preventNextInsertSpace = true;
@@ -399,7 +401,7 @@ function handleBackspace(range, context) {
   let formats = {};
   if (context.offset === 0) {
     let [prev, ] = this.quill.getLine(range.index - 1);
-    if (prev != null && prev.length() > 1) {
+    if (prev != null && prev.length() > 0) {
       let curFormats = line.formats();
       let prevFormats = this.quill.getFormat(range.index-1, 1);
       formats = DeltaOp.attributes.diff(curFormats, prevFormats) || {};
