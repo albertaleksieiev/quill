@@ -391,6 +391,14 @@ describe('Editor', function() {
       expect(this.container).toEqualHTML('<p>0123</p><h1>56</h1><h2>89</h2>');
     });
 
+    it('append multilined text with same format', function() {
+      let editor = this.initialize(Editor, '<b>0123</b>');
+      editor.applyDelta(new Delta().retain(4)
+        .insert('QQQ\nWWW\nEEE', { bold: true })
+      );
+      expect(this.container).toEqualHTML('<p><strong>0123QQQ</strong></p><p><strong>WWW</strong></p><p><strong>EEE</strong></p>');
+    });
+
     it('code', function() {
       let editor = this.initialize(Editor, { html: '<p>0</p><pre>1\n23\n</pre><p><br></p>' });
       editor.applyDelta(new Delta().delete(4).retain(1).delete(2));

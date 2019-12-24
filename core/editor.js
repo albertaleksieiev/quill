@@ -257,10 +257,38 @@ function normalizeDelta(delta) {
     }
     if (typeof op.insert === 'string') {
       let text = op.insert.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      return delta.insert(text, op.attributes);
+      let insertDelta = normalizeInsert(text, op.attributes);
+      return delta.concat(insertDelta);
     }
     return delta.push(op);
   }, new Delta());
+}
+
+function normalizeInsert(text, attributes) {
+  let delta = new Delta();
+
+  attributes = attributes || {}
+  let inlineAttributes = {}
+  let blockAttributes = {}
+  Object.keys(attributes).forEach((name) => {
+    if (Parchment.query(name, Parchment.Scope.INLINE) != null) {
+      inlineAttributes[name] = attributes[name];
+    } else {
+      blockAttributes[name] = attributes[name];
+    }
+  });
+
+  let lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    if(i != 0) {
+      delta.insert("\n", blockAttributes);
+    }
+    if(line != "") {
+      delta.insert(line, inlineAttributes);
+    }
+  }
+  return delta;
 }
 
 
