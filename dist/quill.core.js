@@ -1828,8 +1828,8 @@ var Inline = function (_Parchment$Inline) {
 
 Inline.allowedChildren = [Inline, _parchment2.default.Embed, _text2.default];
 // Lower index means deeper in the DOM tree, since not found (-1) is for embeds
-Inline.order = ['cursor', 'inline', // Must be lower
-'underline', 'strike', 'italic', 'bold', 'script', 'link', 'code' // Must be higher
+Inline.order = ['cursor', 'link', 'inline', // Must be lower
+'underline', 'strike', 'italic', 'bold', 'script', 'code' // Must be higher
 ];
 
 exports.default = Inline;
