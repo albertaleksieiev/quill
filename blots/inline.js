@@ -35,6 +35,8 @@ class Inline extends Parchment.Inline {
       let parent = this.parent.isolate(this.offset(), this.length());
       this.moveChildren(parent);
       parent.wrap(this);
+    } else if (this.parent instanceof Inline && this.parent.children.length == 1) {
+      this.attributes.move(this.parent);
     }
   }
 }
