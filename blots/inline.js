@@ -35,15 +35,17 @@ class Inline extends Parchment.Inline {
       let parent = this.parent.isolate(this.offset(), this.length());
       this.moveChildren(parent);
       parent.wrap(this);
+    } else if (this.parent instanceof Inline && this.parent.children.length == 1) {
+      this.attributes.move(this.parent);
     }
   }
 }
 Inline.allowedChildren = [Inline, Parchment.Embed, Text];
 // Lower index means deeper in the DOM tree, since not found (-1) is for embeds
 Inline.order = [
-  'cursor', 'inline',   // Must be lower
+  'cursor', 'link', 'inline',   // Must be lower
   'underline', 'strike', 'italic', 'bold', 'script',
-  'link', 'code'        // Must be higher
+  'code'        // Must be higher
 ];
 
 
