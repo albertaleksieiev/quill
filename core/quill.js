@@ -32,6 +32,10 @@ class Quill {
   }
 
   static register(path, target, overwrite = false) {
+    if (window.quillComponentsToIgnore != null && window.quillComponentsToIgnore.includes(path)) {
+      return;
+    }
+
     if (typeof path !== 'string') {
       let name = path.attrName || path.blotName;
       if (typeof name === 'string') {
