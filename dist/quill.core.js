@@ -1808,6 +1808,8 @@ var Inline = function (_Parchment$Inline) {
         var parent = this.parent.isolate(this.offset(), this.length());
         this.moveChildren(parent);
         parent.wrap(this);
+      } else if (this.parent instanceof Inline && this.parent.children.length == 1) {
+        this.attributes.move(this.parent);
       }
     }
   }], [{
@@ -1832,8 +1834,8 @@ var Inline = function (_Parchment$Inline) {
 
 Inline.allowedChildren = [Inline, _parchment2.default.Embed, _text2.default];
 // Lower index means deeper in the DOM tree, since not found (-1) is for embeds
-Inline.order = ['cursor', 'inline', // Must be lower
-'underline', 'strike', 'italic', 'bold', 'script', 'link', 'code' // Must be higher
+Inline.order = ['cursor', 'link', 'inline', // Must be lower
+'underline', 'strike', 'italic', 'bold', 'script', 'code' // Must be higher
 ];
 
 exports.default = Inline;
@@ -3304,10 +3306,38 @@ function normalizeDelta(delta) {
     }
     if (typeof op.insert === 'string') {
       var text = op.insert.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      return delta.insert(text, op.attributes);
+      var insertDelta = normalizeInsert(text, op.attributes);
+      return delta.concat(insertDelta);
     }
     return delta.push(op);
   }, new _quillDelta2.default());
+}
+
+function normalizeInsert(text, attributes) {
+  var delta = new _quillDelta2.default();
+
+  attributes = attributes || {};
+  var inlineAttributes = {};
+  var blockAttributes = {};
+  Object.keys(attributes).forEach(function (name) {
+    if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) != null) {
+      inlineAttributes[name] = attributes[name];
+    } else {
+      blockAttributes[name] = attributes[name];
+    }
+  });
+
+  var lines = text.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (i != 0) {
+      delta.insert("\n", blockAttributes);
+    }
+    if (line != "") {
+      delta.insert(line, inlineAttributes);
+    }
+  }
+  return delta;
 }
 
 exports.default = Editor;

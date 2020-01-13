@@ -1808,6 +1808,8 @@ var Inline = function (_Parchment$Inline) {
         var parent = this.parent.isolate(this.offset(), this.length());
         this.moveChildren(parent);
         parent.wrap(this);
+      } else if (this.parent instanceof Inline && this.parent.children.length == 1) {
+        this.attributes.move(this.parent);
       }
     }
   }], [{
@@ -1832,8 +1834,8 @@ var Inline = function (_Parchment$Inline) {
 
 Inline.allowedChildren = [Inline, _parchment2.default.Embed, _text2.default];
 // Lower index means deeper in the DOM tree, since not found (-1) is for embeds
-Inline.order = ['cursor', 'inline', // Must be lower
-'underline', 'strike', 'italic', 'bold', 'script', 'link', 'code' // Must be higher
+Inline.order = ['cursor', 'link', 'inline', // Must be lower
+'underline', 'strike', 'italic', 'bold', 'script', 'code' // Must be higher
 ];
 
 exports.default = Inline;
@@ -3304,10 +3306,38 @@ function normalizeDelta(delta) {
     }
     if (typeof op.insert === 'string') {
       var text = op.insert.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      return delta.insert(text, op.attributes);
+      var insertDelta = normalizeInsert(text, op.attributes);
+      return delta.concat(insertDelta);
     }
     return delta.push(op);
   }, new _quillDelta2.default());
+}
+
+function normalizeInsert(text, attributes) {
+  var delta = new _quillDelta2.default();
+
+  attributes = attributes || {};
+  var inlineAttributes = {};
+  var blockAttributes = {};
+  Object.keys(attributes).forEach(function (name) {
+    if (_parchment2.default.query(name, _parchment2.default.Scope.INLINE) != null) {
+      inlineAttributes[name] = attributes[name];
+    } else {
+      blockAttributes[name] = attributes[name];
+    }
+  });
+
+  var lines = text.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (i != 0) {
+      delta.insert("\n", blockAttributes);
+    }
+    if (line != "") {
+      delta.insert(line, inlineAttributes);
+    }
+  }
+  return delta;
 }
 
 exports.default = Editor;
@@ -13279,6 +13309,22 @@ describe('Inline', function () {
     scroll.update();
     expect(scroll.domNode).toEqualHTML('<p><em>0</em><strong><em>12</em></strong><em>3</em></p>');
   });
+  it('move styles to top', function (done) {
+    var scroll = this.initialize(_scroll2.default, '<p><span style="background-color: rgb(255, 0, 255);color: rgb(0, 0, 255);">123</span></p>');
+    var outerSpan = scroll.domNode.childNodes[0].childNodes[0];
+    // let scroll = this.initialize(Scroll, '<p><span style="background-color: rgb(255, 0, 255)"><span style="font-size: 32px">123</font></span></p>');
+    var innerSpan = document.createElement("SPAN");
+    innerSpan.style.color = outerSpan.style.color;
+    innerSpan.innerHTML = outerSpan.innerHTML;
+    outerSpan.innerHTML = "";
+    outerSpan.style.color = "";
+
+    outerSpan.appendChild(innerSpan);
+    setTimeout(function () {
+      expect(scroll.domNode).toEqualHTML('<p><span style="background-color: rgb(255, 0, 255); color: rgb(0, 0, 255);">123</span></p>');
+      done();
+    }, 2);
+  });
 });
 
 /***/ }),
@@ -13594,6 +13640,12 @@ describe('Editor', function () {
       var editor = this.initialize(_editor2.default, '<p>0123</p>');
       editor.applyDelta(new _quillDelta2.default().retain(5).insert('56').insert('\n', { header: 1 }).insert('89').insert('\n', { header: 2 }));
       expect(this.container).toEqualHTML('<p>0123</p><h1>56</h1><h2>89</h2>');
+    });
+
+    it('append multilined text with same format', function () {
+      var editor = this.initialize(_editor2.default, '<b>0123</b>');
+      editor.applyDelta(new _quillDelta2.default().retain(4).insert('QQQ\nWWW\nEEE', { bold: true }));
+      expect(this.container).toEqualHTML('<p><strong>0123QQQ</strong></p><p><strong>WWW</strong></p><p><strong>EEE</strong></p>');
     });
 
     it('code', function () {
