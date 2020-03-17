@@ -1113,7 +1113,7 @@ var Quill = function () {
           });
         }
       } else {
-        if (this.imports[path] != null && !overwrite) {
+        if (this.imports[path] != null && this.imports[path] != target && !overwrite) {
           debug.warn('Overwriting ' + path + ' with', target);
         }
         this.imports[path] = target;
