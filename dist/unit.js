@@ -1102,6 +1102,10 @@ var Quill = function () {
 
       var overwrite = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
+      if (window.quillComponentsToIgnore != null && window.quillComponentsToIgnore.includes(path)) {
+        return;
+      }
+
       if (typeof path !== 'string') {
         var name = path.attrName || path.blotName;
         if (typeof name === 'string') {
