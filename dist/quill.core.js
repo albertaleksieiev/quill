@@ -1906,7 +1906,9 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var debug = (0, _logger2.default)('quill:events');
 
+var supportsRootNode = 'getRootNode' in document;
 var EVENTS = ['selectionchange', 'mousedown', 'mouseup', 'click'];
+var EMITTERS = [];
 
 EVENTS.forEach(function (eventName) {
   document.addEventListener(eventName, function () {
@@ -1914,13 +1916,8 @@ EVENTS.forEach(function (eventName) {
       args[_key] = arguments[_key];
     }
 
-    [].slice.call(document.querySelectorAll('.ql-container')).forEach(function (node) {
-      // TODO use WeakMap
-      if (node.__quill && node.__quill.emitter) {
-        var _node$__quill$emitter;
-
-        (_node$__quill$emitter = node.__quill.emitter).handleDOM.apply(_node$__quill$emitter, args);
-      }
+    EMITTERS.forEach(function (em) {
+      em.handleDOM.apply(em, args);
     });
   });
 });
@@ -1934,6 +1931,7 @@ var Emitter = function (_EventEmitter) {
     var _this = _possibleConstructorReturn(this, (Emitter.__proto__ || Object.getPrototypeOf(Emitter)).call(this));
 
     _this.listeners = {};
+    EMITTERS.push(_this);
     _this.on('error', debug.error);
     return _this;
   }
@@ -1951,11 +1949,28 @@ var Emitter = function (_EventEmitter) {
         args[_key2 - 1] = arguments[_key2];
       }
 
+      var target = event.composedPath ? event.composedPath()[0] : event.target;
+      var containsNode = function containsNode(node, target) {
+        if (!supportsRootNode || target.getRootNode() === document) {
+          return node.contains(target);
+        }
+
+        while (!node.contains(target)) {
+          var root = target.getRootNode();
+          if (!root || !root.host) {
+            return false;
+          }
+          target = root.host;
+        }
+
+        return true;
+      };
+
       (this.listeners[event.type] || []).forEach(function (_ref) {
         var node = _ref.node,
             handler = _ref.handler;
 
-        if (event.target === node || node.contains(event.target)) {
+        if (target === node || containsNode(node, target)) {
           handler.apply(undefined, [event].concat(args));
         }
       });
@@ -2500,6 +2515,7 @@ var Selection = function () {
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
+    this.rootDocument = this.root.getRootNode ? this.root.getRootNode() : document;
     this.cursor = _parchment2.default.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
@@ -2695,8 +2711,10 @@ var Selection = function () {
   }, {
     key: 'getNativeRange',
     value: function getNativeRange() {
-      var selection = document.getSelection();
+      var selection = this.rootDocument.getSelection();
       if (selection == null || selection.rangeCount <= 0) return null;
+      // eslint-disable-next-line no-console
+      console.log(selection.getRangeAt(0));
       var nativeRange = selection.getRangeAt(0);
       if (nativeRange == null) return null;
       var range = this.normalizeNative(nativeRange);
@@ -2714,7 +2732,7 @@ var Selection = function () {
   }, {
     key: 'hasFocus',
     value: function hasFocus() {
-      return document.activeElement === this.root;
+      return this.rootDocument.activeElement === this.root;
     }
   }, {
     key: 'normalizedToRange',
@@ -2842,7 +2860,7 @@ var Selection = function () {
       if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
         return;
       }
-      var selection = document.getSelection();
+      var selection = typeof this.rootDocument.getSelection === 'function' ? this.rootDocument.getSelection() : document.getSelection();
       if (selection == null) return;
       if (startNode != null) {
         if (!this.hasFocus()) this.root.focus();

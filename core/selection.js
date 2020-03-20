@@ -22,6 +22,7 @@ class Selection {
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
+    this.rootDocument = (this.root.getRootNode ? this.root.getRootNode() : document);
     this.cursor = Parchment.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
@@ -168,8 +169,10 @@ class Selection {
   }
 
   getNativeRange() {
-    let selection = document.getSelection();
+    let selection = this.rootDocument.getSelection();
     if (selection == null || selection.rangeCount <= 0) return null;
+    // eslint-disable-next-line no-console
+    console.log(selection.getRangeAt(0))
     let nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
     let range = this.normalizeNative(nativeRange);
@@ -185,7 +188,7 @@ class Selection {
   }
 
   hasFocus() {
-    return document.activeElement === this.root;
+    return this.rootDocument.activeElement === this.root;
   }
 
   normalizedToRange(range) {
@@ -279,7 +282,7 @@ class Selection {
     if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
       return;
     }
-    let selection = document.getSelection();
+    let selection = typeof this.rootDocument.getSelection === 'function' ? this.rootDocument.getSelection() : document.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
