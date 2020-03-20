@@ -171,8 +171,6 @@ class Selection {
   getNativeRange() {
     let selection = this.rootDocument.getSelection();
     if (selection == null || selection.rangeCount <= 0) return null;
-    // eslint-disable-next-line no-console
-    console.log(selection.getRangeAt(0))
     let nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
     let range = this.normalizeNative(nativeRange);
