@@ -2713,8 +2713,6 @@ var Selection = function () {
     value: function getNativeRange() {
       var selection = this.rootDocument.getSelection();
       if (selection == null || selection.rangeCount <= 0) return null;
-      // eslint-disable-next-line no-console
-      console.log(selection.getRangeAt(0));
       var nativeRange = selection.getRangeAt(0);
       if (nativeRange == null) return null;
       var range = this.normalizeNative(nativeRange);
