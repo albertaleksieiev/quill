@@ -126,6 +126,19 @@ describe('Keyboard', function() {
 
     });
 
+    it("Don't autostart after manual list", function() {
+        let originalDelta = new Delta().insert('- Test\n-');
+        let expectedDeltaAfterInput = new Delta().insert('- Test\n-\n');
+
+        let quill = this.initialize(Quill, '');
+        quill.setContents(originalDelta);
+        quill.setSelection(quill.getLength() - 1, 0);
+
+        quill.root.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 32 }))
+        expect(quill.getContents()).toEqual(expectedDeltaAfterInput);
+
+    });
+
     it("Delete list line", function() {
         let originalDelta = new Delta().insert('A', { bold: true })
                                         .insert('\n', { list: "ordered" })

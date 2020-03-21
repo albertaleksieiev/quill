@@ -305,6 +305,12 @@ Keyboard.DEFAULTS = {
         let length = context.prefix.length;
         let [line, offset] = this.quill.getLine(range.index);
         if (offset > length) return true;
+        if (range.index - (offset + 1) > 0) {
+          let [prevLine, ] = this.quill.getLine(range.index - (offset + 1));
+          if (doesLineContainManualList(prevLine)) {
+            return true;
+          }
+        }
         let value;
         switch (context.prefix.trim()) {
           case '[]': case '[ ]':
@@ -550,5 +556,21 @@ function normalize(binding) {
   return binding;
 }
 
+function doesLineContainManualList(line) {
+  let lineText = collectBlotText(line);
+  return lineText.startsWith('- ') || lineText.startsWith('* ');
+}
+
+function collectBlotText(blot) {
+  if (blot instanceof Parchment.Text) {
+    return blot.value();
+  }
+  if (blot instanceof Parchment.Container) {
+    return blot.children.reduce(function (memo, child) {
+        return memo + collectBlotText(child);
+    }, '');
+  }
+  return '';
+}
 
 export { Keyboard as default, SHORTKEY };
