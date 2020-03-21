@@ -10298,7 +10298,13 @@ var Clipboard = function (_Module) {
       if (this.shouldAddNewlineBeforePaste(delta, index)) {
         delta = new _quillDelta2.default().insert("\n").concat(delta);
       }
-      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"]);
+      var format = this.quill.getFormat(index);
+      if (format.link) {
+        format.link = null;
+        format.color = null;
+        format.underline = null;
+      }
+      applyFormatToDelta(delta, format, ["list"]);
       return delta;
     }
   }, {
@@ -15678,28 +15684,43 @@ describe('Clipboard', function () {
       }, 2);
     });
 
-    it('paste in Bold', function (done) {
+    it('paste after link', function (done) {
       var _this6 = this;
+
+      var originalDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' });
+      var expectedDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' }).insert('Text', { size: 'huge' }).insert('\n');
+      this.quill.setContents(originalDelta);
+      this.quill.setSelection(this.quill.getLength() - 1, 0);
+      this.quill.clipboard.container.innerHTML = 'Text';
+      this.quill.clipboard.onPaste({});
+      setTimeout(function () {
+        expect(_this6.quill.getContents()).toEqual(expectedDelta);
+        done();
+      }, 2);
+    });
+
+    it('paste in Bold', function (done) {
+      var _this7 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA", { bold: true }));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = 'B';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this6.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
+        expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
         done();
       }, 2);
     });
 
     it('paste list', function (done) {
-      var _this7 = this;
+      var _this8 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA"));
       this.quill.setSelection(1, 0);
       this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
       this.quill.clipboard.onPaste({});
       setTimeout(function () {
-        expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
+        expect(_this8.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
         done();
       }, 2);
     });

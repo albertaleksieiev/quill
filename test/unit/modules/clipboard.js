@@ -55,6 +55,21 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('paste after link', function(done) {
+      let originalDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'});
+      let expectedDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'})
+                                      .insert('Text', {size: 'huge'})
+                                      .insert('\n');
+      this.quill.setContents(originalDelta);
+      this.quill.setSelection(this.quill.getLength() - 1, 0);
+      this.quill.clipboard.container.innerHTML = 'Text';
+      this.quill.clipboard.onPaste({});
+      setTimeout(() => {
+        expect(this.quill.getContents()).toEqual(expectedDelta);
+        done();
+      }, 2);
+    });
+
     it('paste in Bold', function(done) {
       this.quill.setContents(new Delta().insert("AA", {bold: true}));
       this.quill.setSelection(1, 0)
