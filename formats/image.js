@@ -31,7 +31,7 @@ class Image extends Parchment.Embed {
   }
 
   static sanitize(url) {
-    return sanitize(url, ['http', 'https', 'data', 'cid']) ? url : '//:0';
+    return sanitize(url, ['http', 'https', 'data', 'cid', 'file']) ? url : '//:0';
   }
 
   static value(domNode) {
