@@ -9589,6 +9589,9 @@ module.exports = function GetIntrinsic(name, allowMissing) {
 		if (value != null) {
 			if ($gOPD && (i + 1) >= parts.length) {
 				var desc = $gOPD(value, parts[i]);
+				if (!allowMissing && !(parts[i] in value)) {
+					throw new $TypeError('base intrinsic for ' + name + ' exists, but the property is not available.');
+				}
 				value = desc ? (desc.get || desc.value) : value[parts[i]];
 			} else {
 				value = value[parts[i]];
@@ -11964,7 +11967,7 @@ var Image = function (_Parchment$Embed) {
   }, {
     key: 'sanitize',
     value: function sanitize(url) {
-      return (0, _link.sanitize)(url, ['http', 'https', 'data', 'cid']) ? url : '//:0';
+      return (0, _link.sanitize)(url, ['http', 'https', 'data', 'cid', 'file']) ? url : '//:0';
     }
   }, {
     key: 'value',
