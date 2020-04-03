@@ -158,7 +158,13 @@ class Clipboard extends Module {
       if (this.shouldAddNewlineBeforePaste(delta, index)) {
         delta = new Delta().insert("\n").concat(delta);
       }
-      applyFormatToDelta(delta, this.quill.getFormat(index), ["list"])
+      var format = this.quill.getFormat(index);
+      if (format.link) {
+        format.link = null;
+        format.color = null;
+        format.underline = null;
+      }
+      applyFormatToDelta(delta, format, ["list"])
       return delta;
   }
 
