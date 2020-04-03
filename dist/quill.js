@@ -5015,6 +5015,15 @@ Keyboard.DEFAULTS = {
             offset = _quill$getLine8[1];
 
         if (offset > length) return true;
+        if (range.index - (offset + 1) > 0) {
+          var _quill$getLine9 = this.quill.getLine(range.index - (offset + 1)),
+              _quill$getLine10 = _slicedToArray(_quill$getLine9, 1),
+              prevLine = _quill$getLine10[0];
+
+          if (doesLineContainManualList(prevLine)) {
+            return true;
+          }
+        }
         var value = void 0;
         switch (context.prefix.trim()) {
           case '[]':case '[ ]':
@@ -5045,10 +5054,10 @@ Keyboard.DEFAULTS = {
       prefix: /\n\n$/,
       suffix: /^\s+$/,
       handler: function handler(range) {
-        var _quill$getLine9 = this.quill.getLine(range.index),
-            _quill$getLine10 = _slicedToArray(_quill$getLine9, 2),
-            line = _quill$getLine10[0],
-            offset = _quill$getLine10[1];
+        var _quill$getLine11 = this.quill.getLine(range.index),
+            _quill$getLine12 = _slicedToArray(_quill$getLine11, 2),
+            line = _quill$getLine12[0],
+            offset = _quill$getLine12[1];
 
         var delta = new _quillDelta2.default().retain(range.index + line.length() - offset - 2).retain(1, { 'code-block': null }).delete(1);
         this.quill.updateContents(delta, _quill2.default.sources.USER);
@@ -5111,15 +5120,15 @@ function makeEmbedArrowHandler(key, shiftKey) {
 function handleBackspace(range, context) {
   if (range.index === 0 || this.quill.getLength() <= 1) return;
 
-  var _quill$getLine11 = this.quill.getLine(range.index),
-      _quill$getLine12 = _slicedToArray(_quill$getLine11, 1),
-      line = _quill$getLine12[0];
+  var _quill$getLine13 = this.quill.getLine(range.index),
+      _quill$getLine14 = _slicedToArray(_quill$getLine13, 1),
+      line = _quill$getLine14[0];
 
   var formats = {};
   if (context.offset === 0) {
-    var _quill$getLine13 = this.quill.getLine(range.index - 1),
-        _quill$getLine14 = _slicedToArray(_quill$getLine13, 1),
-        prev = _quill$getLine14[0];
+    var _quill$getLine15 = this.quill.getLine(range.index - 1),
+        _quill$getLine16 = _slicedToArray(_quill$getLine15, 1),
+        prev = _quill$getLine16[0];
 
     if (prev != null && prev.length() > 0) {
       var curFormats = line.formats();
@@ -5143,14 +5152,14 @@ function handleDelete(range, context) {
   var formats = {},
       nextLength = 0;
 
-  var _quill$getLine15 = this.quill.getLine(range.index),
-      _quill$getLine16 = _slicedToArray(_quill$getLine15, 1),
-      line = _quill$getLine16[0];
+  var _quill$getLine17 = this.quill.getLine(range.index),
+      _quill$getLine18 = _slicedToArray(_quill$getLine17, 1),
+      line = _quill$getLine18[0];
 
   if (context.offset >= line.length() - 1) {
-    var _quill$getLine17 = this.quill.getLine(range.index + 1),
-        _quill$getLine18 = _slicedToArray(_quill$getLine17, 1),
-        next = _quill$getLine18[0];
+    var _quill$getLine19 = this.quill.getLine(range.index + 1),
+        _quill$getLine20 = _slicedToArray(_quill$getLine19, 1),
+        next = _quill$getLine20[0];
 
     if (next) {
       var curFormats = line.formats();
@@ -5284,6 +5293,23 @@ function normalize(binding) {
     delete binding.shortKey;
   }
   return binding;
+}
+
+function doesLineContainManualList(line) {
+  var lineText = collectBlotText(line);
+  return lineText.startsWith('- ') || lineText.startsWith('* ');
+}
+
+function collectBlotText(blot) {
+  if (blot instanceof _parchment2.default.Text) {
+    return blot.value();
+  }
+  if (blot instanceof _parchment2.default.Container) {
+    return blot.children.reduce(function (memo, child) {
+      return memo + collectBlotText(child);
+    }, '');
+  }
+  return '';
 }
 
 exports.default = Keyboard;
