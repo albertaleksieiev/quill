@@ -9615,9 +9615,6 @@ module.exports = function GetIntrinsic(name, allowMissing) {
 		if (value != null) {
 			if ($gOPD && (i + 1) >= parts.length) {
 				var desc = $gOPD(value, parts[i]);
-				if (!allowMissing && !(parts[i] in value)) {
-					throw new $TypeError('base intrinsic for ' + name + ' exists, but the property is not available.');
-				}
 				value = desc ? (desc.get || desc.value) : value[parts[i]];
 			} else {
 				value = value[parts[i]];
@@ -10271,30 +10268,25 @@ var Clipboard = function (_Module) {
   }, {
     key: 'onPaste',
     value: function onPaste(e) {
-      var _this2 = this;
-
       if (e.defaultPrevented || !this.quill.isEnabled()) return;
       if (e.target != null && e.target.tagName == "INPUT") return; // Disab;e Quill paste when inside of input(i.e. plecaholder)
-      var range = this.quill.getSelection();
+      e.preventDefault();
+      var range = this.quill.getSelection(true);
+      if (range == null) return;
+      var html = e.clipboardData.getData('text/html');
+      var text = e.clipboardData.getData('text/plain');
       var delta = new _quillDelta2.default().retain(range.index);
-      var scrollTop = this.quill.scrollingContainer.scrollTop;
-      this.container.focus();
-      this.quill.selection.update(_quill2.default.sources.SILENT);
-      setTimeout(function () {
-        var pasteDelta = _this2.convert();
-        pasteDelta = _this2.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
-        delta = delta.concat(pasteDelta).delete(range.length);
-        _this2.quill.updateContents(delta, _quill2.default.sources.USER);
-        // range.length contributes to delta.length()
-        _this2.quill.setSelection(delta.length() - range.length, _quill2.default.sources.SILENT);
-        _this2.quill.scrollingContainer.scrollTop = scrollTop;
-        _this2.quill.focus();
-      }, 1);
+      var pasteDelta = this.convert(html || text);
+      pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
+      delta = delta.concat(pasteDelta).delete(range.length);
+      this.quill.updateContents(delta, _quill2.default.sources.USER);
+      // range.length contributes to delta.length()
+      this.quill.setSelection(delta.length() - range.length, _quill2.default.sources.SILENT);
     }
   }, {
     key: 'prepareMatching',
     value: function prepareMatching() {
-      var _this3 = this;
+      var _this2 = this;
 
       var elementMatchers = [],
           textMatchers = [];
@@ -10311,7 +10303,7 @@ var Clipboard = function (_Module) {
             elementMatchers.push(matcher);
             break;
           default:
-            [].forEach.call(_this3.container.querySelectorAll(selector), function (node) {
+            [].forEach.call(_this2.container.querySelectorAll(selector), function (node) {
               // TODO use weakmap
               node[DOM_KEY] = node[DOM_KEY] || [];
               node[DOM_KEY].push(matcher);
@@ -15704,8 +15696,8 @@ describe('Clipboard', function () {
     it('paste', function (done) {
       var _this5 = this;
 
-      this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
-      this.quill.clipboard.onPaste({});
+      var event = buildClipboardEvent('<strong>|</strong>', '|');
+      this.quill.clipboard.onPaste(event);
       setTimeout(function () {
         expect(_this5.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
         expect(_this5.quill.getSelection()).toEqual(new _selection.Range(3));
@@ -15720,8 +15712,8 @@ describe('Clipboard', function () {
       var expectedDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' }).insert('Text', { size: 'huge' }).insert('\n');
       this.quill.setContents(originalDelta);
       this.quill.setSelection(this.quill.getLength() - 1, 0);
-      this.quill.clipboard.container.innerHTML = 'Text';
-      this.quill.clipboard.onPaste({});
+      var event = buildClipboardEvent(null, 'Text');
+      this.quill.clipboard.onPaste(event);
       setTimeout(function () {
         expect(_this6.quill.getContents()).toEqual(expectedDelta);
         done();
@@ -15733,8 +15725,8 @@ describe('Clipboard', function () {
 
       this.quill.setContents(new _quillDelta2.default().insert("AA", { bold: true }));
       this.quill.setSelection(1, 0);
-      this.quill.clipboard.container.innerHTML = 'B';
-      this.quill.clipboard.onPaste({});
+      var event = buildClipboardEvent(null, 'B');
+      this.quill.clipboard.onPaste(event);
       setTimeout(function () {
         expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
         done();
@@ -15746,8 +15738,8 @@ describe('Clipboard', function () {
 
       this.quill.setContents(new _quillDelta2.default().insert("AA"));
       this.quill.setSelection(1, 0);
-      this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
-      this.quill.clipboard.onPaste({});
+      var event = buildClipboardEvent('<ul><li>B</li></ul>', 'B');
+      this.quill.clipboard.onPaste(event);
       setTimeout(function () {
         expect(_this8.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
         done();
@@ -15760,8 +15752,8 @@ describe('Clipboard', function () {
       };
       spyOn(handler, 'change');
       this.quill.on('selection-change', handler.change);
-      this.quill.clipboard.container.innerHTML = '0';
-      this.quill.clipboard.onPaste({});
+      var event = buildClipboardEvent(null, 'B');
+      this.quill.clipboard.onPaste(event);
       setTimeout(function () {
         expect(handler.change).not.toHaveBeenCalled();
         done();
@@ -15876,6 +15868,17 @@ describe('Clipboard', function () {
     });
   });
 });
+
+function buildClipboardEvent(html, text) {
+  return {
+    clipboardData: {
+      getData: function getData(type) {
+        return type === 'text/html' ? html : text;
+      }
+    },
+    preventDefault: function preventDefault() {}
+  };
+}
 
 /***/ }),
 /* 152 */

@@ -114,21 +114,18 @@ class Clipboard extends Module {
   onPaste(e) {
     if (e.defaultPrevented || !this.quill.isEnabled()) return;
     if (e.target != null && e.target.tagName == "INPUT") return; // Disab;e Quill paste when inside of input(i.e. plecaholder)
-    let range = this.quill.getSelection();
+    e.preventDefault();
+    const range = this.quill.getSelection(true);
+    if (range == null) return;
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
     let delta = new Delta().retain(range.index);
-    let scrollTop = this.quill.scrollingContainer.scrollTop;
-    this.container.focus();
-    this.quill.selection.update(Quill.sources.SILENT);
-    setTimeout(() => {
-      let pasteDelta = this.convert();
-      pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
-      delta = delta.concat(pasteDelta).delete(range.length);
-      this.quill.updateContents(delta, Quill.sources.USER);
-      // range.length contributes to delta.length()
-      this.quill.setSelection(delta.length() - range.length, Quill.sources.SILENT);
-      this.quill.scrollingContainer.scrollTop = scrollTop;
-      this.quill.focus();
-    }, 1);
+    let pasteDelta = this.convert(html || text);
+    pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
+    delta = delta.concat(pasteDelta).delete(range.length);
+    this.quill.updateContents(delta, Quill.sources.USER);
+    // range.length contributes to delta.length()
+    this.quill.setSelection(delta.length() - range.length, Quill.sources.SILENT);
   }
 
   prepareMatching() {
