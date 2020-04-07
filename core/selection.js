@@ -14,9 +14,16 @@ class Range {
   }
 }
 
+class CursorFormat {
+  constructor(index) {
+    this.index = index;
+    this.format = {};
+  }
+}
 
 class Selection {
-  constructor(scroll, emitter) {
+  constructor(quill, scroll, emitter) {
+    this.quill = quill;
     this.emitter = emitter;
     this.scroll = scroll;
     this.composing = false;
@@ -26,6 +33,7 @@ class Selection {
     this.cursor = Parchment.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
+    this.cursorFormat = null;
 
     if (typeof window.IS_ANDROID === 'undefined' || !window.IS_ANDROID) {
       this.handleComposition();
@@ -37,8 +45,9 @@ class Selection {
         setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
       }
     });
-    this.emitter.on(Emitter.events.EDITOR_CHANGE, (type, delta) => {
+    this.emitter.on(Emitter.events.EDITOR_CHANGE, (type, delta, oldDelta, source) => {
       if (type === Emitter.events.TEXT_CHANGE && delta.length() > 0) {
+        this.onTextChange(delta, source);
         this.update(Emitter.sources.SILENT);
       }
     });
@@ -104,25 +113,12 @@ class Selection {
 
   format(format, value) {
     if (this.scroll.whitelist != null && !this.scroll.whitelist[format]) return;
-    this.scroll.update();
-    let nativeRange = this.getNativeRange();
-    if (nativeRange == null || !nativeRange.native.collapsed || Parchment.query(format, Parchment.Scope.BLOCK)) return;
-    if (nativeRange.start.node !== this.cursor.textNode) {
-      let blot = Parchment.find(nativeRange.start.node, false);
-      if (blot == null) return;
-      // TODO Give blot ability to not split
-      if (blot instanceof Parchment.Leaf) {
-        let after = blot.split(nativeRange.start.offset);
-        blot.parent.insertBefore(this.cursor, after);
-      } else {
-        blot.insertBefore(this.cursor, nativeRange.start.node);  // Should never happen
-      }
-      this.cursor.attach();
-    }
-    this.cursor.format(format, value);
-    this.scroll.optimize();
-    this.setNativeRange(this.cursor.textNode, this.cursor.textNode.data.length);
+    if (this.composing) return;
     this.update();
+    if (!this.cursorFormat || this.cursorFormat.index != this.lastRange.index) {
+      this.cursorFormat = new CursorFormat(this.lastRange.index)
+    }
+    this.cursorFormat.format[format] = value;
   }
 
   getBounds(index, length = 0) {
@@ -166,6 +162,13 @@ class Selection {
         width: 0
       };
     }
+  }
+
+  getFormat(index) {
+    if (this.cursorFormat && index == this.cursorFormat.index) {
+      return this.cursorFormat.format
+    }
+    return null;
   }
 
   getNativeRange() {
@@ -237,6 +240,27 @@ class Selection {
       position.node = node, position.offset = offset;
     });
     return range;
+  }
+
+  onTextChange(delta, source) {
+    if (!this.cursorFormat) {
+      return;
+    }
+    let cursorFormat = this.cursorFormat;
+
+    let isInsertCharInCursorIndex = (delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length == 1) ||
+          (delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length == 1)
+    let isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
+    let isAttributeChangeOnly = (delta.ops.length == 2 && delta.ops[0].retain && delta.ops[1].retain) || (delta.ops.length == 1 && delta.ops[0].retain);
+    let applyFormat = isInsertCharInCursorIndex || isInsertNewlineInCursorIndex;
+    if(applyFormat) {
+      // Not the best solution, but otherwise listeners will receive change events in a wrong order( format first, text change second)
+      setTimeout(() => {
+        this.quill.formatText(cursorFormat.index, 1, cursorFormat.format, source);
+      }, 1);
+    } else if (isAttributeChangeOnly == false){
+      this.cursorFormat = null;
+    }
   }
 
   rangeToNative(range) {
@@ -335,6 +359,7 @@ class Selection {
       this.savedRange = this.lastRange;
     }
     if (!equal(oldRange, this.lastRange)) {
+      this.cursorFormat = null;
       if (!this.composing && nativeRange != null && nativeRange.native.collapsed && nativeRange.start.node !== this.cursor.textNode) {
         this.cursor.restore();
       }

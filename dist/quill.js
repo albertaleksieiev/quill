@@ -1159,7 +1159,7 @@ var Quill = function () {
       whitelist: this.options.formats
     });
     this.editor = new _editor2.default(this.scroll);
-    this.selection = new _selection2.default(this.scroll, this.emitter);
+    this.selection = new _selection2.default(this, this.scroll, this.emitter);
     this.theme = new this.options.theme(this, this.options);
     this.keyboard = this.theme.addModule('keyboard');
     this.clipboard = this.theme.addModule('clipboard');
@@ -1350,11 +1350,19 @@ var Quill = function () {
       var index = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.getSelection(true);
       var length = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 
-      if (typeof index === 'number') {
-        return this.editor.getFormat(index, length);
-      } else {
-        return this.editor.getFormat(index.index, index.length);
+      if (typeof index !== 'number') {
+        length = index.length;
+        index = index.index;
       }
+
+      var format = this.editor.getFormat(index, length);
+      if (length == 0) {
+        var cursorFormat = this.selection.getFormat(index);
+        if (cursorFormat) {
+          Object.assign(format, cursorFormat);
+        }
+      }
+      return format;
     }
   }, {
     key: 'getIndex',
@@ -2508,12 +2516,20 @@ var Range = function Range(index) {
   this.length = length;
 };
 
+var CursorFormat = function CursorFormat(index) {
+  _classCallCheck(this, CursorFormat);
+
+  this.index = index;
+  this.format = {};
+};
+
 var Selection = function () {
-  function Selection(scroll, emitter) {
+  function Selection(quill, scroll, emitter) {
     var _this = this;
 
     _classCallCheck(this, Selection);
 
+    this.quill = quill;
     this.emitter = emitter;
     this.scroll = scroll;
     this.composing = false;
@@ -2523,6 +2539,7 @@ var Selection = function () {
     this.cursor = _parchment2.default.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
+    this.cursorFormat = null;
 
     if (typeof window.IS_ANDROID === 'undefined' || !window.IS_ANDROID) {
       this.handleComposition();
@@ -2534,8 +2551,9 @@ var Selection = function () {
         setTimeout(_this.update.bind(_this, _emitter4.default.sources.USER), 1);
       }
     });
-    this.emitter.on(_emitter4.default.events.EDITOR_CHANGE, function (type, delta) {
+    this.emitter.on(_emitter4.default.events.EDITOR_CHANGE, function (type, delta, oldDelta, source) {
       if (type === _emitter4.default.events.TEXT_CHANGE && delta.length() > 0) {
+        _this.onTextChange(delta, source);
         _this.update(_emitter4.default.sources.SILENT);
       }
     });
@@ -2621,25 +2639,12 @@ var Selection = function () {
     key: 'format',
     value: function format(_format, value) {
       if (this.scroll.whitelist != null && !this.scroll.whitelist[_format]) return;
-      this.scroll.update();
-      var nativeRange = this.getNativeRange();
-      if (nativeRange == null || !nativeRange.native.collapsed || _parchment2.default.query(_format, _parchment2.default.Scope.BLOCK)) return;
-      if (nativeRange.start.node !== this.cursor.textNode) {
-        var blot = _parchment2.default.find(nativeRange.start.node, false);
-        if (blot == null) return;
-        // TODO Give blot ability to not split
-        if (blot instanceof _parchment2.default.Leaf) {
-          var after = blot.split(nativeRange.start.offset);
-          blot.parent.insertBefore(this.cursor, after);
-        } else {
-          blot.insertBefore(this.cursor, nativeRange.start.node); // Should never happen
-        }
-        this.cursor.attach();
-      }
-      this.cursor.format(_format, value);
-      this.scroll.optimize();
-      this.setNativeRange(this.cursor.textNode, this.cursor.textNode.data.length);
+      if (this.composing) return;
       this.update();
+      if (!this.cursorFormat || this.cursorFormat.index != this.lastRange.index) {
+        this.cursorFormat = new CursorFormat(this.lastRange.index);
+      }
+      this.cursorFormat.format[_format] = value;
     }
   }, {
     key: 'getBounds',
@@ -2711,6 +2716,14 @@ var Selection = function () {
           width: 0
         };
       }
+    }
+  }, {
+    key: 'getFormat',
+    value: function getFormat(index) {
+      if (this.cursorFormat && index == this.cursorFormat.index) {
+        return this.cursorFormat.format;
+      }
+      return null;
     }
   }, {
     key: 'getNativeRange',
@@ -2794,9 +2807,32 @@ var Selection = function () {
       return range;
     }
   }, {
+    key: 'onTextChange',
+    value: function onTextChange(delta, source) {
+      var _this5 = this;
+
+      if (!this.cursorFormat) {
+        return;
+      }
+      var cursorFormat = this.cursorFormat;
+
+      var isInsertCharInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length == 1 || delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length == 1;
+      var isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
+      var isAttributeChangeOnly = delta.ops.length == 2 && delta.ops[0].retain && delta.ops[1].retain || delta.ops.length == 1 && delta.ops[0].retain;
+      var applyFormat = isInsertCharInCursorIndex || isInsertNewlineInCursorIndex;
+      if (applyFormat) {
+        // Not the best solution, but otherwise listeners will receive change events in a wrong order( format first, text change second)
+        setTimeout(function () {
+          _this5.quill.formatText(cursorFormat.index, 1, cursorFormat.format, source);
+        }, 1);
+      } else if (isAttributeChangeOnly == false) {
+        this.cursorFormat = null;
+      }
+    }
+  }, {
     key: 'rangeToNative',
     value: function rangeToNative(range) {
-      var _this5 = this;
+      var _this6 = this;
 
       var indexes = range.collapsed ? [range.index] : [range.index, range.index + range.length];
       var args = [];
@@ -2804,7 +2840,7 @@ var Selection = function () {
       indexes.forEach(function (index, i) {
         index = Math.min(scrollLength - 1, index);
         var node = void 0,
-            _scroll$leaf5 = _this5.scroll.leaf(index),
+            _scroll$leaf5 = _this6.scroll.leaf(index),
             _scroll$leaf6 = _slicedToArray(_scroll$leaf5, 2),
             leaf = _scroll$leaf6[0],
             offset = _scroll$leaf6[1];
@@ -2927,6 +2963,7 @@ var Selection = function () {
       if (!(0, _deepEqual2.default)(oldRange, this.lastRange)) {
         var _emitter;
 
+        this.cursorFormat = null;
         if (!this.composing && nativeRange != null && nativeRange.native.collapsed && nativeRange.start.node !== this.cursor.textNode) {
           this.cursor.restore();
         }
