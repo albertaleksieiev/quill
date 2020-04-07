@@ -46,8 +46,8 @@ describe('Clipboard', function() {
     });
 
     it('paste', function(done) {
-      this.quill.clipboard.container.innerHTML = '<strong>|</strong>';
-      this.quill.clipboard.onPaste({});
+      let event = buildClipboardEvent('<strong>|</strong>', '|')
+      this.quill.clipboard.onPaste(event);
       setTimeout(() => {
         expect(this.quill.root).toEqualHTML('<p>01<strong>|</strong><em>7</em>8</p>');
         expect(this.quill.getSelection()).toEqual(new Range(3));
@@ -62,8 +62,8 @@ describe('Clipboard', function() {
                                       .insert('\n');
       this.quill.setContents(originalDelta);
       this.quill.setSelection(this.quill.getLength() - 1, 0);
-      this.quill.clipboard.container.innerHTML = 'Text';
-      this.quill.clipboard.onPaste({});
+      let event = buildClipboardEvent(null, 'Text')
+      this.quill.clipboard.onPaste(event);
       setTimeout(() => {
         expect(this.quill.getContents()).toEqual(expectedDelta);
         done();
@@ -73,8 +73,8 @@ describe('Clipboard', function() {
     it('paste in Bold', function(done) {
       this.quill.setContents(new Delta().insert("AA", {bold: true}));
       this.quill.setSelection(1, 0)
-      this.quill.clipboard.container.innerHTML = 'B';
-      this.quill.clipboard.onPaste({});
+      let event = buildClipboardEvent(null, 'B')
+      this.quill.clipboard.onPaste(event);
       setTimeout(() => {
         expect(this.quill.getContents()).toEqual(new Delta().insert("ABA", {bold: true}).insert("\n"));
         done();
@@ -84,8 +84,8 @@ describe('Clipboard', function() {
     it('paste list', function(done) {
       this.quill.setContents(new Delta().insert("AA"));
       this.quill.setSelection(1, 0)
-      this.quill.clipboard.container.innerHTML = '<ul><li>B</li></ul>';
-      this.quill.clipboard.onPaste({});
+      let event = buildClipboardEvent('<ul><li>B</li></ul>', 'B')
+      this.quill.clipboard.onPaste(event);
       setTimeout(() => {
         expect(this.quill.getContents()).toEqual(new Delta().insert("A\nB").insert("\n", {list:"bullet"}).insert("A\n"));
         done();
@@ -98,8 +98,8 @@ describe('Clipboard', function() {
       };
       spyOn(handler, 'change');
       this.quill.on('selection-change', handler.change);
-      this.quill.clipboard.container.innerHTML = '0';
-      this.quill.clipboard.onPaste({});
+      let event = buildClipboardEvent(null, 'B')
+      this.quill.clipboard.onPaste(event);
       setTimeout(function() {
         expect(handler.change).not.toHaveBeenCalled();
         done();
@@ -225,3 +225,14 @@ describe('Clipboard', function() {
     });
   });
 });
+
+function buildClipboardEvent(html, text) {
+  return {
+    clipboardData: {
+      getData: (type) => {
+        return type === 'text/html' ? html : text;
+      }
+    },
+    preventDefault: () => {},
+  }
+}
