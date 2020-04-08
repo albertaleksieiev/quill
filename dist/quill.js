@@ -4808,6 +4808,7 @@ var Keyboard = function (_Module) {
       var _this2 = this;
 
       this.quill.root.addEventListener('keydown', function (evt) {
+        // eslint-disable-line complexity
         if (evt.defaultPrevented) return;
         var which = evt.which || evt.keyCode;
         var bindings = (_this2.bindings[which] || []).filter(function (binding) {
@@ -4894,6 +4895,8 @@ var Keyboard = function (_Module) {
             _this2.preventNextInsertParagraph = true;
           } else if (isIOS && evt.keyCode == 32) {
             _this2.preventNextInsertSpace = true;
+          } else if (isIOS && evt.keyCode == 8) {
+            _this2.preventNextBackspace = true;
           } else {
             evt.preventDefault();
           }
@@ -4908,6 +4911,10 @@ var Keyboard = function (_Module) {
           _this2.preventNextInsertSpace = false;
           evt.preventDefault();
         }
+        if (_this2.preventNextBackspace && evt.inputType == "deleteContentBackward") {
+          evt.preventDefault();
+        }
+        _this2.preventNextBackspace = false;
       });
     }
   }]);
