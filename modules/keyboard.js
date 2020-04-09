@@ -79,7 +79,7 @@ class Keyboard extends Module {
   }
 
   listen() {
-    this.quill.root.addEventListener('keydown', (evt) => {
+    this.quill.root.addEventListener('keydown', (evt) => { // eslint-disable-line complexity
       if (evt.defaultPrevented) return;
       let which = evt.which || evt.keyCode;
       let bindings = (this.bindings[which] || []).filter(function(binding) {
@@ -154,6 +154,8 @@ class Keyboard extends Module {
           this.preventNextInsertParagraph = true;
         } else if (isIOS && evt.keyCode == 32) {
           this.preventNextInsertSpace = true;
+        } else if (isIOS && evt.keyCode == 8) {
+          this.preventNextBackspace = true;
         } else {
           evt.preventDefault();
         }
@@ -168,6 +170,10 @@ class Keyboard extends Module {
           this.preventNextInsertSpace = false;
           evt.preventDefault();
       }
+      if (this.preventNextBackspace && evt.inputType == "deleteContentBackward") {
+          evt.preventDefault();
+      }
+      this.preventNextBackspace = false;
     });
 
   }

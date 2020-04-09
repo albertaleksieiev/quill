@@ -83,7 +83,7 @@ class Quill {
       whitelist: this.options.formats
     });
     this.editor = new Editor(this.scroll);
-    this.selection = new Selection(this.scroll, this.emitter);
+    this.selection = new Selection(this, this.scroll, this.emitter);
     this.theme = new this.options.theme(this, this.options);
     this.keyboard = this.theme.addModule('keyboard');
     this.clipboard = this.theme.addModule('clipboard');
@@ -208,11 +208,19 @@ class Quill {
   }
 
   getFormat(index = this.getSelection(true), length = 0) {
-    if (typeof index === 'number') {
-      return this.editor.getFormat(index, length);
-    } else {
-      return this.editor.getFormat(index.index, index.length);
+    if (typeof index !== 'number') {
+      length = index.length;
+      index = index.index;
     }
+
+    let format = this.editor.getFormat(index, length);
+    if (length == 0) {
+      let cursorFormat = this.selection.getFormat(index);
+      if (cursorFormat) {
+        Object.assign(format, cursorFormat);
+      }
+    }
+    return format;
   }
 
   getIndex(blot) {
