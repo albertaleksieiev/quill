@@ -22,15 +22,13 @@ class CursorFormat {
 }
 
 class Selection {
-  constructor(quill, scroll, emitter) {
-    this.quill = quill;
+  constructor(scroll, emitter) {
     this.emitter = emitter;
     this.scroll = scroll;
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
     this.rootDocument = (this.root.getRootNode ? this.root.getRootNode() : document);
-    this.cursor = Parchment.create('cursor', this);
     // savedRange is last non-null range
     this.lastRange = this.savedRange = new Range(0, 0);
     this.cursorFormat = null;
@@ -45,9 +43,8 @@ class Selection {
         setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
       }
     });
-    this.emitter.on(Emitter.events.EDITOR_CHANGE, (type, delta, oldDelta, source) => {
+    this.emitter.on(Emitter.events.EDITOR_CHANGE, (type, delta) => {
       if (type === Emitter.events.TEXT_CHANGE && delta.length() > 0) {
-        this.onTextChange(delta, source);
         this.update(Emitter.sources.SILENT);
       }
     });
@@ -55,7 +52,6 @@ class Selection {
       if (!this.hasFocus()) return;
       let [quillSelection, nativeSelection] = this.getRange();
       if (nativeSelection == null) return;
-      if (nativeSelection.start.node === this.cursor.textNode) return;  // cursor.restore() will handle
       // TODO unclear if this has negative side effects
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
           // Native selection is no longer valid can't restore it - use quill selection fallback
@@ -77,19 +73,16 @@ class Selection {
     this.update(Emitter.sources.SILENT);
   }
 
+  clearCursorFormat() {
+    this.cursorFormat = null;
+  }
+
   handleComposition() {
     this.root.addEventListener('compositionstart', () => {
       this.composing = true;
     });
     this.root.addEventListener('compositionend', () => {
       this.composing = false;
-      if (this.cursor.parent) {
-        const range = this.cursor.restore();
-        if (!range) return;
-        setTimeout(() => {
-          this.setNativeRange(range.startNode, range.startOffset, range.endNode, range.endOffset);
-        }, 1);
-      }
     });
   }
 
@@ -242,27 +235,6 @@ class Selection {
     return range;
   }
 
-  onTextChange(delta, source) {
-    if (!this.cursorFormat) {
-      return;
-    }
-    let cursorFormat = this.cursorFormat;
-
-    let isInsertCharInCursorIndex = (delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length == 1) ||
-          (delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length == 1)
-    let isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
-    let isAttributeChangeOnly = (delta.ops.length == 2 && delta.ops[0].retain && delta.ops[1].retain) || (delta.ops.length == 1 && delta.ops[0].retain);
-    let applyFormat = isInsertCharInCursorIndex || isInsertNewlineInCursorIndex;
-    if(applyFormat) {
-      // Not the best solution, but otherwise listeners will receive change events in a wrong order( format first, text change second)
-      setTimeout(() => {
-        this.quill.formatText(cursorFormat.index, 1, cursorFormat.format, source);
-      }, 1);
-    } else if (isAttributeChangeOnly == false){
-      this.cursorFormat = null;
-    }
-  }
-
   rangeToNative(range) {
     let indexes = range.collapsed ? [range.index] : [range.index, range.index + range.length];
     let args = [];
@@ -353,16 +325,13 @@ class Selection {
 
   update(source = Emitter.sources.USER) {
     let oldRange = this.lastRange;
-    let [lastRange, nativeRange] = this.getRange();
+    let [lastRange, ] = this.getRange();
     this.lastRange = lastRange;
     if (this.lastRange != null) {
       this.savedRange = this.lastRange;
     }
     if (!equal(oldRange, this.lastRange)) {
-      this.cursorFormat = null;
-      if (!this.composing && nativeRange != null && nativeRange.native.collapsed && nativeRange.start.node !== this.cursor.textNode) {
-        this.cursor.restore();
-      }
+      this.clearCursorFormat();
       let args = [Emitter.events.SELECTION_CHANGE, clone(this.lastRange), clone(oldRange), source];
       this.emitter.emit(Emitter.events.EDITOR_CHANGE, ...args);
       if (source !== Emitter.sources.SILENT) {

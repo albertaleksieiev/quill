@@ -12,6 +12,14 @@ import Theme from './theme';
 let debug = logger('quill');
 
 
+class CursorFormatPostmodificationInfo {
+  constructor(format, index, length) {
+    this.format = format;
+    this.index = index;
+    this.length = length;
+  }
+}
+
 class Quill {
   static debug(limit) {
     if (limit === true) {
@@ -83,7 +91,7 @@ class Quill {
       whitelist: this.options.formats
     });
     this.editor = new Editor(this.scroll);
-    this.selection = new Selection(this, this.scroll, this.emitter);
+    this.selection = new Selection(this.scroll, this.emitter);
     this.theme = new this.options.theme(this, this.options);
     this.keyboard = this.theme.addModule('keyboard');
     this.clipboard = this.theme.addModule('clipboard');
@@ -124,6 +132,10 @@ class Quill {
 
   blur() {
     this.selection.setRange(null);
+  }
+
+  clearCursorFormat() {
+    this.selection.clearCursorFormat();
   }
 
   deleteText(index, length, source) {
@@ -447,6 +459,7 @@ function modify(modifier, source, index, shift) {
   let range = index == null ? null : this.getSelection();
   let oldDelta = this.editor.delta;
   let change = modifier();
+  let activeCursorFormat = this.selection.cursorFormat;
   if (range != null) {
     if (index === true) index = range.index;
     if (shift == null) {
@@ -457,6 +470,16 @@ function modify(modifier, source, index, shift) {
     this.setSelection(range, Emitter.sources.SILENT);
   }
   if (change.length() > 0) {
+    if (activeCursorFormat) {
+      const cursorFormatPostmodificationInfo = generateCursorFormatPostmodificationInfo(change, activeCursorFormat);
+      if (cursorFormatPostmodificationInfo){
+        let beforePostmodificationRange = this.getSelection();
+        let deltaUpdate = this.editor.formatText(cursorFormatPostmodificationInfo.index, cursorFormatPostmodificationInfo.length, cursorFormatPostmodificationInfo.format);
+        this.selection.clearCursorFormat();
+        this.setSelection(beforePostmodificationRange, Emitter.sources.SILENT);
+        change = change.compose(deltaUpdate)
+      }
+    }
     let args = [Emitter.events.TEXT_CHANGE, change, oldDelta, source];
     this.emitter.emit(Emitter.events.EDITOR_CHANGE, ...args);
     if (source !== Emitter.sources.SILENT) {
@@ -464,6 +487,22 @@ function modify(modifier, source, index, shift) {
     }
   }
   return change;
+}
+
+function generateCursorFormatPostmodificationInfo(delta, cursorFormat) {
+
+    let isInsertInCursorIndex = (delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length >= 1) ||
+          (delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length >= 1);
+    let isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
+    let applyFormat = isInsertInCursorIndex || isInsertNewlineInCursorIndex;
+
+    if (applyFormat == false) {
+      return null;
+    }
+
+    let length = delta.ops.length == 2 ? delta.ops[1].insert.length : delta.ops[0].insert.length;
+
+    return new CursorFormatPostmodificationInfo(cursorFormat.format, cursorFormat.index, length);
 }
 
 function overload(index, length, name, value, source) {
