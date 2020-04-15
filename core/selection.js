@@ -77,6 +77,10 @@ class Selection {
     this.update(Emitter.sources.SILENT);
   }
 
+  clearCursorFormat() {
+    this.cursorFormat = null;
+  }
+
   handleComposition() {
     this.root.addEventListener('compositionstart', () => {
       this.composing = true;
@@ -248,15 +252,16 @@ class Selection {
     }
     let cursorFormat = this.cursorFormat;
 
-    let isInsertCharInCursorIndex = (delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length == 1) ||
-          (delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length == 1)
+    let isInsertInCursorIndex = (delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length >= 1) ||
+          (delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length >= 1);
     let isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
     let isAttributeChangeOnly = (delta.ops.length == 2 && delta.ops[0].retain && delta.ops[1].retain) || (delta.ops.length == 1 && delta.ops[0].retain);
-    let applyFormat = isInsertCharInCursorIndex || isInsertNewlineInCursorIndex;
+    let applyFormat = isInsertInCursorIndex || isInsertNewlineInCursorIndex;
     if(applyFormat) {
+      let length = delta.ops.length == 2 ? delta.ops[1].insert.length : delta.ops[0].insert.length;
       // Not the best solution, but otherwise listeners will receive change events in a wrong order( format first, text change second)
       setTimeout(() => {
-        this.quill.formatText(cursorFormat.index, 1, cursorFormat.format, source);
+        this.quill.formatText(cursorFormat.index, length, cursorFormat.format, source);
       }, 1);
     } else if (isAttributeChangeOnly == false){
       this.cursorFormat = null;

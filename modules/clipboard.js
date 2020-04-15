@@ -104,6 +104,7 @@ class Clipboard extends Module {
     } else {
       var paste = this.convert(html);
       paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
+      this.quill.clearCursorFormat();
       this.quill.updateContents(new Delta().retain(index).concat(paste), source);
       if (this.quill.hasFocus()) {
         this.quill.setSelection(index + paste.length(), Quill.sources.SILENT);
@@ -117,11 +118,13 @@ class Clipboard extends Module {
     e.preventDefault();
     const range = this.quill.getSelection(true);
     if (range == null) return;
+    this.quill.clearCursorFormat();
     const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
     let delta = new Delta().retain(range.index);
     let pasteDelta = this.convert(html || text);
     pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
+    this.quill.clearCursorFormat();
     delta = delta.concat(pasteDelta).delete(range.length);
     this.quill.updateContents(delta, Quill.sources.USER);
     // range.length contributes to delta.length()

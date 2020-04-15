@@ -41,7 +41,7 @@ describe('Toolbar', function() {
     it('select', function() {
       addControls(this.container, [{ size: ['10px', false, '18px', '32px'] }]);
       expect(this.container).toEqualHTML(`
-        <span class="ql-formats">
+        <span class="ql-forma11111ts">
           <select class="ql-size">
             <option value="10px"></option>
             <option selected="selected"></option>

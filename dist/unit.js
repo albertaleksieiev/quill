@@ -1207,6 +1207,11 @@ var Quill = function () {
       this.selection.setRange(null);
     }
   }, {
+    key: 'clearCursorFormat',
+    value: function clearCursorFormat() {
+      this.selection.clearCursorFormat();
+    }
+  }, {
     key: 'deleteText',
     value: function deleteText(index, length, source) {
       var _this3 = this;
@@ -2006,7 +2011,8 @@ Emitter.events = {
   SCROLL_OPTIMIZE: 'scroll-optimize',
   SCROLL_UPDATE: 'scroll-update',
   SELECTION_CHANGE: 'selection-change',
-  TEXT_CHANGE: 'text-change'
+  TEXT_CHANGE: 'text-change',
+  BEFORE_PASTE: 'before-paste'
 };
 Emitter.sources = {
   API: 'api',
@@ -2594,6 +2600,11 @@ var Selection = function () {
   }
 
   _createClass(Selection, [{
+    key: 'clearCursorFormat',
+    value: function clearCursorFormat() {
+      this.cursorFormat = null;
+    }
+  }, {
     key: 'handleComposition',
     value: function handleComposition() {
       var _this2 = this;
@@ -2816,14 +2827,15 @@ var Selection = function () {
       }
       var cursorFormat = this.cursorFormat;
 
-      var isInsertCharInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length == 1 || delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length == 1;
+      var isInsertInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index && delta.ops[1].insert && delta.ops[1].insert.length >= 1 || delta.ops.length == 1 && cursorFormat.index == 0 && delta.ops[0].insert && delta.ops[0].insert.length >= 1;
       var isInsertNewlineInCursorIndex = delta.ops.length == 2 && delta.ops[0].retain == cursorFormat.index + 1 && delta.ops[1].insert == '\n';
       var isAttributeChangeOnly = delta.ops.length == 2 && delta.ops[0].retain && delta.ops[1].retain || delta.ops.length == 1 && delta.ops[0].retain;
-      var applyFormat = isInsertCharInCursorIndex || isInsertNewlineInCursorIndex;
+      var applyFormat = isInsertInCursorIndex || isInsertNewlineInCursorIndex;
       if (applyFormat) {
+        var length = delta.ops.length == 2 ? delta.ops[1].insert.length : delta.ops[0].insert.length;
         // Not the best solution, but otherwise listeners will receive change events in a wrong order( format first, text change second)
         setTimeout(function () {
-          _this5.quill.formatText(cursorFormat.index, 1, cursorFormat.format, source);
+          _this5.quill.formatText(cursorFormat.index, length, cursorFormat.format, source);
         }, 1);
       } else if (isAttributeChangeOnly == false) {
         this.cursorFormat = null;
@@ -10303,6 +10315,7 @@ var Clipboard = function (_Module) {
       } else {
         var paste = this.convert(html);
         paste = this.preprocessDeltaBeforePasteIntoIndex(paste, index);
+        this.quill.clearCursorFormat();
         this.quill.updateContents(new _quillDelta2.default().retain(index).concat(paste), source);
         if (this.quill.hasFocus()) {
           this.quill.setSelection(index + paste.length(), _quill2.default.sources.SILENT);
@@ -10317,11 +10330,13 @@ var Clipboard = function (_Module) {
       e.preventDefault();
       var range = this.quill.getSelection(true);
       if (range == null) return;
+      this.quill.clearCursorFormat();
       var html = e.clipboardData.getData('text/html');
       var text = e.clipboardData.getData('text/plain');
       var delta = new _quillDelta2.default().retain(range.index);
       var pasteDelta = this.convert(html || text);
       pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
+      this.quill.clearCursorFormat();
       delta = delta.concat(pasteDelta).delete(range.length);
       this.quill.updateContents(delta, _quill2.default.sources.USER);
       // range.length contributes to delta.length()
@@ -16392,7 +16407,7 @@ describe('Toolbar', function () {
 
     it('select', function () {
       (0, _toolbar.addControls)(this.container, [{ size: ['10px', false, '18px', '32px'] }]);
-      expect(this.container).toEqualHTML('\n        <span class="ql-formats">\n          <select class="ql-size">\n            <option value="10px"></option>\n            <option selected="selected"></option>\n            <option value="18px"></option>\n            <option value="32px"></option>\n          </select>\n        </span>\n      ');
+      expect(this.container).toEqualHTML('\n        <span class="ql-forma11111ts">\n          <select class="ql-size">\n            <option value="10px"></option>\n            <option selected="selected"></option>\n            <option value="18px"></option>\n            <option value="32px"></option>\n          </select>\n        </span>\n      ');
     });
 
     it('everything', function () {

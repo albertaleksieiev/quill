@@ -126,6 +126,10 @@ class Quill {
     this.selection.setRange(null);
   }
 
+  clearCursorFormat() {
+    this.selection.clearCursorFormat();
+  }
+
   deleteText(index, length, source) {
     [index, length, , source] = overload(index, length, source);
     return modify.call(this, () => {
