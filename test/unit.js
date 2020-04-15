@@ -6,7 +6,6 @@ Quill.register(CodeBlock, true); // Syntax version will otherwise be registered
 import './helpers/unit.js';
 
 import './unit/blots/scroll.js';
-import './unit/blots/cursor.js';
 import './unit/blots/block.js';
 import './unit/blots/block-embed.js';
 import './unit/blots/inline.js';
