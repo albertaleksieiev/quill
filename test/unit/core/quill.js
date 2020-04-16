@@ -42,6 +42,85 @@ describe('Quill', function() {
     });
   });
 
+  describe('format', function() {
+    beforeEach(function() {
+      this.setup = (html, index) => {
+        this.quill = this.initialize(Quill, html);
+        this.quill.setSelection(index);
+      };
+      this.insertText = (text) => {
+        document.execCommand('insertText', false, text);
+        this.quill.scroll.update();
+      };
+    });
+
+    it('No changes on collapsed format', function() {
+      this.setup('<h1><strong><em>0123</em></strong></h1>', 2);
+      this.quill.format('underline', true);
+      this.quill.format('color', 'red');
+      expect(this.quill.getFormat(2)).toEqual({ bold: true, italic: true, header: 1, color: 'red', underline: true });
+    });
+
+    it('trailing', function() {
+      this.setup('<p>0123</p>', 4);
+      this.quill.format('bold', true);
+      this.insertText('4');
+      expect(this.quill.root).toEqualHTML('<p>0123<strong>4</strong></p>');
+      expect(this.quill.selection.cursorFormat).toEqual(null);
+    });
+
+    it('split nodes', function() {
+      this.setup('<p><em>0123</em></p>', 2);
+      this.quill.format('bold', true);
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p><em>01</em><strong><em>!</em></strong><em>23</em></p>');
+    });
+
+    it('between characters', function() {
+      this.setup('<p><em>0</em><strong>1</strong></p>', 1);
+      this.quill.format('underline', true);
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p><em>0<u>!</u></em><strong>1</strong></p>');
+    });
+
+    it('empty line', function() {
+      this.setup('<p><br></p>', 0);
+      this.quill.format('bold', true);
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p><strong>!</strong></p>');
+    });
+
+    it('multiple', function() {
+      this.setup(`<p>0123</p>`, 2);
+      this.quill.format('color', 'red');
+      this.quill.format('italic', true);
+      this.quill.format('underline', true);
+      this.quill.format('background', 'blue');
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p>01<em style="color: red; background-color: blue;"><u>!</u></em>23</p>');
+    });
+
+    it('remove', function() {
+      this.setup('<p><strong>0123</strong></p>', 2);
+      this.quill.format('italic', true);
+      this.quill.format('underline', true);
+      this.quill.format('italic', false);
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p><strong>01<u>!</u>23</strong></p>');
+    });
+
+    it('cancel', function() {
+      this.setup('<p><strong>0123</strong></p>', 2);
+      this.quill.format('italic', true);
+      this.quill.format('underline', true);
+      this.quill.setSelection(1)
+      this.insertText('!');
+      expect(this.quill.root).toEqualHTML('<p><strong>0!123</strong></p>');
+      expect(this.quill.selection.cursorFormat).toEqual(null);
+    });
+
+  });
+
   describe('api', function() {
     beforeEach(function() {
       this.quill = this.initialize(Quill, '<p>0123<em>45</em>67</p>');

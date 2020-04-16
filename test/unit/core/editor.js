@@ -1,6 +1,5 @@
 import Delta from 'quill-delta';
 import Editor from '../../../core/editor';
-import Selection, { Range } from '../../../core/selection';
 
 
 describe('Editor', function() {
@@ -420,14 +419,6 @@ describe('Editor', function() {
     it('cursor', function() {
       let editor = this.initialize(Editor, '<h1><strong><em>0123</em></strong></h1><h2><u>5678</u></h2>');
       expect(editor.getFormat(2)).toEqual({ bold: true, italic: true, header: 1 });
-    });
-
-    it('cursor with preformat', function() {
-      let [editor, selection] = this.initialize([Editor, Selection], '<h1><strong><em>0123</em></strong></h1>');
-      selection.setRange(new Range(2));
-      selection.format('underline', true);
-      selection.format('color', 'red');
-      expect(editor.getFormat(2)).toEqual({ bold: true, italic: true, header: 1, color: 'red', underline: true });
     });
 
     it('across leaves', function() {

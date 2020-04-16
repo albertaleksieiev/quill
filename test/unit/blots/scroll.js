@@ -1,7 +1,6 @@
 import Parchment from 'parchment';
 import Emitter from '../../../core/emitter';
 import Selection, { Range } from '../../../core/selection';
-import Cursor from '../../../blots/cursor';
 import Scroll from '../../../blots/scroll';
 
 
@@ -62,10 +61,9 @@ describe('Scroll', function() {
     it('cursor', function() {
       let selection = this.initialize(Selection, '<p><u>0</u>1<u>2</u></p>');
       selection.setRange(new Range(2));
+      const htmlBeforeFormat = selection.scroll.innerHtml;
       selection.format('strike', true);
-      let [leaf, offset] = selection.scroll.leaf(2);
-      expect(leaf instanceof Cursor).toBe(true);
-      expect(offset).toEqual(0);
+      expect(selection.scroll.innerHtml).toEqual(htmlBeforeFormat);
     });
 
     it('beyond document', function() {
