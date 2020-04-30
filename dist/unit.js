@@ -1372,7 +1372,13 @@ var Quill = function () {
       if (length == 0) {
         var cursorFormat = this.selection.getFormat(index);
         if (cursorFormat) {
-          Object.assign(format, cursorFormat);
+          for (var cursorFormatName in cursorFormat) {
+            if (cursorFormat[cursorFormatName] === null || cursorFormat[cursorFormatName] === undefined) {
+              delete format[cursorFormatName];
+            } else {
+              format[cursorFormatName] = cursorFormat[cursorFormatName];
+            }
+          }
         }
       }
       return format;
@@ -14186,6 +14192,14 @@ describe('Quill', function () {
       this.quill.format('underline', true);
       this.quill.format('color', 'red');
       expect(this.quill.getFormat(2)).toEqual({ bold: true, italic: true, header: 1, color: 'red', underline: true });
+    });
+
+    it('cleaning cursor format', function () {
+      this.setup('Test', 2);
+      this.quill.format('color', 'red');
+      expect(this.quill.getFormat(2)).toEqual({ color: 'red' });
+      this.quill.format('color', null);
+      expect(this.quill.getFormat(2)).toEqual({});
     });
 
     it('trailing', function () {

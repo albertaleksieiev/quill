@@ -1372,7 +1372,13 @@ var Quill = function () {
       if (length == 0) {
         var cursorFormat = this.selection.getFormat(index);
         if (cursorFormat) {
-          Object.assign(format, cursorFormat);
+          for (var cursorFormatName in cursorFormat) {
+            if (cursorFormat[cursorFormatName] === null || cursorFormat[cursorFormatName] === undefined) {
+              delete format[cursorFormatName];
+            } else {
+              format[cursorFormatName] = cursorFormat[cursorFormatName];
+            }
+          }
         }
       }
       return format;
