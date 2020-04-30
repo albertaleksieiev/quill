@@ -61,6 +61,14 @@ describe('Quill', function() {
       expect(this.quill.getFormat(2)).toEqual({ bold: true, italic: true, header: 1, color: 'red', underline: true });
     });
 
+    it('cleaning cursor format', function() {
+      this.setup('Test', 2);
+      this.quill.format('color', 'red');
+      expect(this.quill.getFormat(2)).toEqual({ color: 'red' });
+      this.quill.format('color', null);
+      expect(this.quill.getFormat(2)).toEqual({ });
+    });
+
     it('trailing', function() {
       this.setup('<p>0123</p>', 4);
       this.quill.format('bold', true);
