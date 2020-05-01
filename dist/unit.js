@@ -10595,17 +10595,17 @@ function matchText(node, delta) {
   }
   if (!computeStyle(node.parentNode).whiteSpace.startsWith('pre')) {
     // eslint-disable-next-line func-style
-    var replacer = function replacer(collapse, match) {
-      match = match.replace(/[^\u00a0]/g, ''); // \u00a0 is nbsp;
-      return match.length < 1 && collapse ? ' ' : match;
+    var replacer = function replacer(match) {
+      match = match.replace(/[^\u00a0][^\u00a0]+/g, ' '); // \u00a0 is nbsp;
+      return match;
     };
     text = text.replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-    text = text.replace(/\s\s+/g, replacer.bind(replacer, true)); // collapse whitespace
+    text = text.replace(/\s\s+/g, replacer); // collapse whitespaces
     if (node.previousSibling == null && isLine(node.parentNode) || node.previousSibling != null && isLine(node.previousSibling)) {
-      text = text.replace(/^\s+/, replacer.bind(replacer, false));
+      text = text.replace(/^ /, '');
     }
     if (node.nextSibling == null && isLine(node.parentNode) || node.nextSibling != null && isLine(node.nextSibling)) {
-      text = text.replace(/\s+$/, replacer.bind(replacer, false));
+      text = text.replace(/ $/, '');
     }
   }
   return delta.insert(text);
@@ -15737,6 +15737,12 @@ describe('Clipboard', function () {
       var html = '<div> 0 </div><div> <div> 1 2 <span> 3 </span> 4 </div> </div>' + '<div><span>5 </span><span>6 </span><span> 7</span><span> 8</span></div>';
       var delta = this.clipboard.convert(html);
       expect(delta).toEqual(new _quillDelta2.default().insert('0\n1 2  3  4\n5 6  7 8'));
+    });
+
+    it('nbsp', function () {
+      var html = '<div>&nbsp; &nbsp;0&nbsp; </div>' + '<div>A B&nbsp; &nbsp;C&nbsp;&nbsp;&nbsp;D   E  &nbsp;  F</div>';
+      var delta = this.clipboard.convert(html);
+      expect(delta).toEqual(new _quillDelta2.default().insert('\xA0 \xA00\xA0\nA B\xA0 \xA0C\xA0\xA0\xA0D E \xA0 F'));
     });
 
     it('inline whitespace', function () {

@@ -126,6 +126,14 @@ describe('Clipboard', function() {
       expect(delta).toEqual(new Delta().insert('0\n1 2  3  4\n5 6  7 8'));
     });
 
+    it('nbsp', function() {
+      let html =
+        '<div>&nbsp; &nbsp;0&nbsp; </div>' +
+        '<div>A B&nbsp; &nbsp;C&nbsp;&nbsp;&nbsp;D   E  &nbsp;  F</div>'
+      let delta = this.clipboard.convert(html);
+      expect(delta).toEqual(new Delta().insert('\u00a0 \u00a00\u00a0\nA B\u00a0 \u00a0C\u00a0\u00a0\u00a0D E \u00a0 F'));
+    });
+
     it('inline whitespace', function() {
       let html = '<p>0 <strong>1</strong> 2</p>';
       let delta = this.clipboard.convert(html);
