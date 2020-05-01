@@ -10,11 +10,11 @@ describe('Clipboard', function() {
       this.quill.setSelection(2, 5);
     });
 
-    it('dangerousPasteSavesFormatting', function(done) {
+    it('dangerousPasteDoesntSaveFormatting', function(done) {
       this.quill = this.initialize(Quill, '<strong>0123</strong>');
       this.quill.clipboard.dangerouslyPasteHTML(2, "!")
       setTimeout(() => {
-        expect(this.quill.root).toEqualHTML('<p><strong>01!23</strong></p>');
+        expect(this.quill.root).toEqualHTML('<p><strong>01</strong>!<strong>23</strong></p>');
         done();
       }, 2);
     });
@@ -58,8 +58,7 @@ describe('Clipboard', function() {
     it('paste after link', function(done) {
       let originalDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'});
       let expectedDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'})
-                                      .insert('Text', {size: 'huge'})
-                                      .insert('\n');
+                                      .insert('Text\n');
       this.quill.setContents(originalDelta);
       this.quill.setSelection(this.quill.getLength() - 1, 0);
       let event = buildClipboardEvent(null, 'Text')
@@ -70,13 +69,13 @@ describe('Clipboard', function() {
       }, 2);
     });
 
-    it('paste in Bold', function(done) {
+    it('paste uses original formatting', function(done) {
       this.quill.setContents(new Delta().insert("AA", {bold: true}));
       this.quill.setSelection(1, 0)
       let event = buildClipboardEvent(null, 'B')
       this.quill.clipboard.onPaste(event);
       setTimeout(() => {
-        expect(this.quill.getContents()).toEqual(new Delta().insert("ABA", {bold: true}).insert("\n"));
+        expect(this.quill.getContents()).toEqual(new Delta().insert("A", {bold: true}).insert("B").insert("A", {bold: true}).insert("\n"));
         done();
       }, 2);
     });
