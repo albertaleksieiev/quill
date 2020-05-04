@@ -10378,11 +10378,6 @@ var Clipboard = function (_Module) {
         delta = new _quillDelta2.default().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      if (format.link) {
-        format.link = null;
-        format.color = null;
-        format.underline = null;
-      }
       applyFormatToDelta(delta, format, ["list"]);
       return delta;
     }
@@ -10595,45 +10590,42 @@ function matchText(node, delta) {
   }
   if (!computeStyle(node.parentNode).whiteSpace.startsWith('pre')) {
     // eslint-disable-next-line func-style
-    var replacer = function replacer(collapse, match) {
-      match = match.replace(/[^\u00a0]/g, ''); // \u00a0 is nbsp;
-      return match.length < 1 && collapse ? ' ' : match;
+    var replacer = function replacer(match) {
+      match = match.replace(/[^\u00a0][^\u00a0]+/g, ' '); // \u00a0 is nbsp;
+      return match;
     };
     text = text.replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-    text = text.replace(/\s\s+/g, replacer.bind(replacer, true)); // collapse whitespace
+    text = text.replace(/\s\s+/g, replacer); // collapse whitespaces
     if (node.previousSibling == null && isLine(node.parentNode) || node.previousSibling != null && isLine(node.previousSibling)) {
-      text = text.replace(/^\s+/, replacer.bind(replacer, false));
+      text = text.replace(/^ /, '');
     }
     if (node.nextSibling == null && isLine(node.parentNode) || node.nextSibling != null && isLine(node.nextSibling)) {
-      text = text.replace(/\s+$/, replacer.bind(replacer, false));
+      text = text.replace(/ $/, '');
     }
   }
   return delta.insert(text);
 }
 
-function applyFormatToDelta(delta, format) {
-  var forceAttributes = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+function applyFormatToDelta(delta, format, formatTypesWhitelist) {
+  var filteredFormat = Object.keys(format).filter(function (key) {
+    return formatTypesWhitelist.includes(key);
+  }).reduce(function (obj, key) {
+    obj[key] = format[key];
+    return obj;
+  }, {});
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
 
   try {
-    var _loop = function _loop() {
+    for (var _iterator = delta.ops[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
       var op = _step.value;
 
       if (op.attributes == null) {
-        op.attributes = format;
+        op.attributes = filteredFormat;
       } else {
-        Object.keys(format).forEach(function (name) {
-          if (op.attributes[name] == null || forceAttributes.includes(name)) {
-            op.attributes[name] = format[name];
-          }
-        });
+        Object.assign(op.attributes, filteredFormat);
       }
-    };
-
-    for (var _iterator = delta.ops[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      _loop();
     }
   } catch (err) {
     _didIteratorError = true;
