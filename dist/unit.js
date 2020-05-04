@@ -10378,11 +10378,6 @@ var Clipboard = function (_Module) {
         delta = new _quillDelta2.default().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      if (format.link) {
-        format.link = null;
-        format.color = null;
-        format.underline = null;
-      }
       applyFormatToDelta(delta, format, ["list"]);
       return delta;
     }
@@ -10611,29 +10606,26 @@ function matchText(node, delta) {
   return delta.insert(text);
 }
 
-function applyFormatToDelta(delta, format) {
-  var forceAttributes = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+function applyFormatToDelta(delta, format, formatTypesWhitelist) {
+  var filteredFormat = Object.keys(format).filter(function (key) {
+    return formatTypesWhitelist.includes(key);
+  }).reduce(function (obj, key) {
+    obj[key] = format[key];
+    return obj;
+  }, {});
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
 
   try {
-    var _loop = function _loop() {
+    for (var _iterator = delta.ops[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
       var op = _step.value;
 
       if (op.attributes == null) {
-        op.attributes = format;
+        op.attributes = filteredFormat;
       } else {
-        Object.keys(format).forEach(function (name) {
-          if (op.attributes[name] == null || forceAttributes.includes(name)) {
-            op.attributes[name] = format[name];
-          }
-        });
+        Object.assign(op.attributes, filteredFormat);
       }
-    };
-
-    for (var _iterator = delta.ops[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      _loop();
     }
   } catch (err) {
     _didIteratorError = true;
@@ -15611,13 +15603,13 @@ describe('Clipboard', function () {
       this.quill.setSelection(2, 5);
     });
 
-    it('dangerousPasteSavesFormatting', function (done) {
+    it('dangerousPasteDoesntSaveFormatting', function (done) {
       var _this = this;
 
       this.quill = this.initialize(_core2.default, '<strong>0123</strong>');
       this.quill.clipboard.dangerouslyPasteHTML(2, "!");
       setTimeout(function () {
-        expect(_this.quill.root).toEqualHTML('<p><strong>01!23</strong></p>');
+        expect(_this.quill.root).toEqualHTML('<p><strong>01</strong>!<strong>23</strong></p>');
         done();
       }, 2);
     });
@@ -15670,7 +15662,7 @@ describe('Clipboard', function () {
       var _this6 = this;
 
       var originalDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' });
-      var expectedDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' }).insert('Text', { size: 'huge' }).insert('\n');
+      var expectedDelta = new _quillDelta2.default().insert('Link', { link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge' }).insert('Text\n');
       this.quill.setContents(originalDelta);
       this.quill.setSelection(this.quill.getLength() - 1, 0);
       var event = buildClipboardEvent(null, 'Text');
@@ -15681,7 +15673,7 @@ describe('Clipboard', function () {
       }, 2);
     });
 
-    it('paste in Bold', function (done) {
+    it('paste uses original formatting', function (done) {
       var _this7 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA", { bold: true }));
@@ -15689,7 +15681,7 @@ describe('Clipboard', function () {
       var event = buildClipboardEvent(null, 'B');
       this.quill.clipboard.onPaste(event);
       setTimeout(function () {
-        expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("ABA", { bold: true }).insert("\n"));
+        expect(_this7.quill.getContents()).toEqual(new _quillDelta2.default().insert("A", { bold: true }).insert("B").insert("A", { bold: true }).insert("\n"));
         done();
       }, 2);
     });

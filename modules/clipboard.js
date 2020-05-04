@@ -158,11 +158,6 @@ class Clipboard extends Module {
         delta = new Delta().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      if (format.link) {
-        format.link = null;
-        format.color = null;
-        format.underline = null;
-      }
       applyFormatToDelta(delta, format, ["list"])
       return delta;
   }
@@ -388,16 +383,18 @@ function matchText(node, delta) {
   return delta.insert(text);
 }
 
-function applyFormatToDelta(delta, format, forceAttributes = []) {
+function applyFormatToDelta(delta, format, formatTypesWhitelist) {
+  const filteredFormat = Object.keys(format)
+    .filter((key) => formatTypesWhitelist.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = format[key];
+      return obj;
+    }, {});
   for (let op of delta.ops) {
     if (op.attributes == null){
-      op.attributes = format;
+      op.attributes = filteredFormat;
     } else {
-      Object.keys(format).forEach(function (name) {
-        if (op.attributes[name] == null || forceAttributes.includes(name)) {
-          op.attributes[name] = format[name];
-        }
-      });
+      Object.assign(op.attributes, filteredFormat)
     }
   }
 }
