@@ -370,19 +370,19 @@ function matchText(node, delta) {
   }
   if (!computeStyle(node.parentNode).whiteSpace.startsWith('pre')) {
     // eslint-disable-next-line func-style
-    let replacer = function(collapse, match) {
-      match = match.replace(/[^\u00a0]/g, '');    // \u00a0 is nbsp;
-      return match.length < 1 && collapse ? ' ' : match;
+    let replacer = function(match) {
+      match = match.replace(/[^\u00a0][^\u00a0]+/g, ' ');    // \u00a0 is nbsp;
+      return match;
     };
     text = text.replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-    text = text.replace(/\s\s+/g, replacer.bind(replacer, true));  // collapse whitespace
+    text = text.replace(/\s\s+/g, replacer);  // collapse whitespaces
     if ((node.previousSibling == null && isLine(node.parentNode)) ||
         (node.previousSibling != null && isLine(node.previousSibling))) {
-      text = text.replace(/^\s+/, replacer.bind(replacer, false));
+      text = text.replace(/^ /, '');
     }
     if ((node.nextSibling == null && isLine(node.parentNode)) ||
         (node.nextSibling != null && isLine(node.nextSibling))) {
-      text = text.replace(/\s+$/, replacer.bind(replacer, false));
+      text = text.replace(/ $/, '');
     }
   }
   return delta.insert(text);
