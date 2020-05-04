@@ -158,7 +158,7 @@ class Clipboard extends Module {
         delta = new Delta().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      applyFormatToDelta(delta, format, ["list"])
+      applyFormatToDelta(delta, format, ['list', 'blockquote'])
       return delta;
   }
 

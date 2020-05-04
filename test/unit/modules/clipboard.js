@@ -80,6 +80,28 @@ describe('Clipboard', function() {
       }, 2);
     });
 
+    it('paste into list', function(done) {
+      let originalDelta = new Delta().insert("AA")
+                                        .insert("\n", {list:"bullet"})
+                                        .insert("BB")
+                                        .insert("\n", {list:"bullet"});
+      let expectedDelta = new Delta().insert("AQ")
+                                        .insert("\n", {list:"bullet"})
+                                        .insert("WA")
+                                        .insert("\n", {list:"bullet"})
+                                        .insert("BB")
+                                        .insert("\n", {list:"bullet"});
+
+      this.quill.setContents(originalDelta);
+      this.quill.setSelection(1, 0);
+      let event = buildClipboardEvent(null, 'Q<br>W');
+      this.quill.clipboard.onPaste(event);
+      setTimeout(() => {
+        expect(this.quill.getContents()).toEqual(expectedDelta);
+        done();
+      }, 2);
+    });
+
     it('paste list', function(done) {
       this.quill.setContents(new Delta().insert("AA"));
       this.quill.setSelection(1, 0)

@@ -10378,7 +10378,7 @@ var Clipboard = function (_Module) {
         delta = new _quillDelta2.default().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      applyFormatToDelta(delta, format, ["list"]);
+      applyFormatToDelta(delta, format, ['list', 'blockquote']);
       return delta;
     }
   }, {
@@ -15686,15 +15686,31 @@ describe('Clipboard', function () {
       }, 2);
     });
 
-    it('paste list', function (done) {
+    it('paste into list', function (done) {
       var _this8 = this;
+
+      var originalDelta = new _quillDelta2.default().insert("AA").insert("\n", { list: "bullet" }).insert("BB").insert("\n", { list: "bullet" });
+      var expectedDelta = new _quillDelta2.default().insert("AQ").insert("\n", { list: "bullet" }).insert("WA").insert("\n", { list: "bullet" }).insert("BB").insert("\n", { list: "bullet" });
+
+      this.quill.setContents(originalDelta);
+      this.quill.setSelection(1, 0);
+      var event = buildClipboardEvent(null, 'Q<br>W');
+      this.quill.clipboard.onPaste(event);
+      setTimeout(function () {
+        expect(_this8.quill.getContents()).toEqual(expectedDelta);
+        done();
+      }, 2);
+    });
+
+    it('paste list', function (done) {
+      var _this9 = this;
 
       this.quill.setContents(new _quillDelta2.default().insert("AA"));
       this.quill.setSelection(1, 0);
       var event = buildClipboardEvent('<ul><li>B</li></ul>', 'B');
       this.quill.clipboard.onPaste(event);
       setTimeout(function () {
-        expect(_this8.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
+        expect(_this9.quill.getContents()).toEqual(new _quillDelta2.default().insert("A\nB").insert("\n", { list: "bullet" }).insert("A\n"));
         done();
       }, 2);
     });

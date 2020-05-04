@@ -9659,7 +9659,7 @@ var Clipboard = function (_Module) {
         delta = new _quillDelta2.default().insert("\n").concat(delta);
       }
       var format = this.quill.getFormat(index);
-      applyFormatToDelta(delta, format, ["list"]);
+      applyFormatToDelta(delta, format, ['list', 'blockquote']);
       return delta;
     }
   }, {
