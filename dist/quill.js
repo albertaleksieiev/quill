@@ -1175,7 +1175,7 @@ var Quill = function () {
     this.theme.init();
     this.emitter.on(_emitter4.default.events.EDITOR_CHANGE, function (type) {
       if (type === _emitter4.default.events.TEXT_CHANGE) {
-        _this2.root.classList.toggle('ql-blank', _this2.editor.isBlank());
+        _this2.updateBlankState();
       }
     });
     this.emitter.on(_emitter4.default.events.SCROLL_UPDATE, function (source, mutations) {
@@ -1194,6 +1194,14 @@ var Quill = function () {
     if (this.options.readOnly) {
       this.disable();
     }
+    this.root.addEventListener("compositionstart", function () {
+      _this2.inputCompositionInProgress = true;
+    });
+    this.root.addEventListener("compositionend", function () {
+      _this2.inputCompositionInProgress = false;
+      _this2.updateBlankState();
+    });
+    this.compositionWorkaroundRequired = /Macintosh/.test(navigator.userAgent);
   }
 
   _createClass(Quill, [{
@@ -1583,6 +1591,15 @@ var Quill = function () {
       var change = this.scroll.update(source); // Will update selection before selection.update() does if text changes
       this.selection.update(source);
       return change;
+    }
+  }, {
+    key: 'updateBlankState',
+    value: function updateBlankState() {
+      var editorIsBlank = this.editor.isBlank();
+      if (this.compositionWorkaroundRequired && editorIsBlank && this.inputCompositionInProgress) {
+        editorIsBlank = false; // Don't switch to blank state while composing
+      }
+      this.root.classList.toggle('ql-blank', editorIsBlank);
     }
   }, {
     key: 'updateContents',
@@ -3669,10 +3686,20 @@ var ContainerBlot = /** @class */ (function (_super) {
         var _this = this;
         var addedNodes = [];
         var removedNodes = [];
+        var charactedDataWorkaroundRequired = /Macintosh/.test(navigator.userAgent);
         mutations.forEach(function (mutation) {
             if (mutation.target === _this.domNode && mutation.type === 'childList') {
                 addedNodes.push.apply(addedNodes, mutation.addedNodes);
                 removedNodes.push.apply(removedNodes, mutation.removedNodes);
+            }
+            if (charactedDataWorkaroundRequired &&
+                mutation.type === 'characterData' &&
+                mutation.target.parentNode === _this.domNode &&
+                mutation.oldValue === '' &&
+                mutation.target.nodeValue &&
+                mutation.target.nodeValue.length > 0 &&
+                Registry.find(mutation.target) == null) {
+                addedNodes.push.apply(addedNodes, [mutation.target]);
             }
         });
         removedNodes.forEach(function (node) {

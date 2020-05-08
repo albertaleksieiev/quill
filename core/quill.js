@@ -99,7 +99,7 @@ class Quill {
     this.theme.init();
     this.emitter.on(Emitter.events.EDITOR_CHANGE, (type) => {
       if (type === Emitter.events.TEXT_CHANGE) {
-        this.root.classList.toggle('ql-blank', this.editor.isBlank());
+        this.updateBlankState();
       }
     });
     this.emitter.on(Emitter.events.SCROLL_UPDATE, (source, mutations) => {
@@ -118,6 +118,14 @@ class Quill {
     if (this.options.readOnly) {
       this.disable();
     }
+    this.root.addEventListener("compositionstart", () => {
+      this.inputCompositionInProgress = true;
+    });
+    this.root.addEventListener("compositionend", () => {
+      this.inputCompositionInProgress = false;
+      this.updateBlankState();
+    });
+    this.compositionWorkaroundRequired = /Macintosh/.test(navigator.userAgent);
   }
 
   addContainer(container, refNode = null) {
@@ -366,6 +374,14 @@ class Quill {
     let change = this.scroll.update(source);   // Will update selection before selection.update() does if text changes
     this.selection.update(source);
     return change;
+  }
+
+  updateBlankState() {
+    let editorIsBlank = this.editor.isBlank();
+    if (this.compositionWorkaroundRequired && editorIsBlank && this.inputCompositionInProgress) {
+      editorIsBlank = false; // Don't switch to blank state while composing
+    }
+    this.root.classList.toggle('ql-blank', editorIsBlank);
   }
 
   updateContents(delta, source = Emitter.sources.API) {
