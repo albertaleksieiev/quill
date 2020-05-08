@@ -121,7 +121,7 @@ class Clipboard extends Module {
     const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
     let delta = new Delta().retain(range.index);
-    let pasteDelta = this.convert(html || text);
+    let pasteDelta = html ? this.convert(html) : new Delta().insert(text || '');
     pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
     this.quill.clearCursorFormat();
     delta = delta.concat(pasteDelta).delete(range.length);
