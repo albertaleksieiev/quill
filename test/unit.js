@@ -23,6 +23,7 @@ import './unit/formats/header';
 import './unit/formats/indent';
 import './unit/formats/list';
 import './unit/formats/bold';
+import './unit/formats/image';
 
 import './unit/modules/clipboard';
 import './unit/modules/history';
