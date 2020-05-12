@@ -5,7 +5,6 @@ import { DirectionAttribute, DirectionClass, DirectionStyle } from './formats/di
 import { IndentClass as Indent } from './formats/indent';
 
 import Blockquote from './formats/blockquote';
-import Header from './formats/header';
 import List, { ListItem } from './formats/list';
 
 import { BackgroundStyle } from './formats/background';
@@ -39,6 +38,7 @@ import BubbleTheme from './themes/bubble';
 import SnowTheme from './themes/snow';
 
 import { bubbleFormats } from './blots/block';
+import { applyFormat } from './modules/clipboard';
 
 Quill.register({
   'attributors/attribute/direction': DirectionAttribute,
@@ -67,7 +67,6 @@ Quill.register({
 
   'formats/blockquote': Blockquote,
   'formats/code-block': CodeBlock,
-  'formats/header': Header,
   'formats/list': List,
 
   'formats/bold': Bold,
@@ -96,7 +95,8 @@ Quill.register({
   'ui/color-picker': ColorPicker,
   'ui/tooltip': Tooltip,
 
-  'functions/bubbleFormats': bubbleFormats
+  'functions/bubbleFormats': bubbleFormats,
+  'functions/applyFormatToDelta': applyFormat
 
 }, true);
 

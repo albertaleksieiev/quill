@@ -12,6 +12,7 @@ import { ColorStyle } from '../formats/color';
 import { DirectionAttribute, DirectionStyle } from '../formats/direction';
 import { FontStyle } from '../formats/font';
 import { SizeStyle } from '../formats/size';
+import { headersSelector,  matchHeaders} from '../formats/header';
 import List from '../formats/list';
 
 let debug = logger('quill:clipboard');
@@ -31,7 +32,8 @@ const CLIPBOARD_CONFIG = [
   ['li', matchIndent],
   ['b', matchAlias.bind(matchAlias, 'bold')],
   ['i', matchAlias.bind(matchAlias, 'italic')],
-  ['style', matchIgnore]
+  ['style', matchIgnore],
+  [headersSelector, matchHeaders]
 ];
 
 const ATTRIBUTE_ATTRIBUTORS = [
@@ -400,4 +402,4 @@ function applyFormatToDelta(delta, format, formatTypesWhitelist) {
 }
 
 
-export { Clipboard as default, matchAttributor, matchBlot, matchNewline, matchSpacing, matchText };
+export { Clipboard as default, matchAttributor, matchBlot, matchNewline, matchSpacing, matchText, applyFormat };
