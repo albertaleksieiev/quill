@@ -9641,7 +9641,7 @@ var Clipboard = function (_Module) {
       var html = e.clipboardData.getData('text/html');
       var text = e.clipboardData.getData('text/plain');
       var delta = new _quillDelta2.default().retain(range.index);
-      var pasteDelta = this.convert(html || text);
+      var pasteDelta = html ? this.convert(html) : new _quillDelta2.default().insert(text || '');
       pasteDelta = this.preprocessDeltaBeforePasteIntoIndex(pasteDelta, range.index);
       this.quill.clearCursorFormat();
       delta = delta.concat(pasteDelta).delete(range.length);
