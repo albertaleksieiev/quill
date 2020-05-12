@@ -33,13 +33,6 @@ describe('Block', function() {
     `);
   });
 
-  it('insert into formatted', function() {
-    let scroll = this.initialize(Scroll, '<h1>Welcome</h1>');
-    scroll.insertAt(3, 'l\n');
-    expect(scroll.domNode.firstChild.outerHTML).toEqualHTML('<h1>Well</h1>');
-    expect(scroll.domNode.childNodes[1].outerHTML).toEqualHTML('<h1>come</h1>');
-  });
-
   it('delete line contents', function() {
     let scroll = this.initialize(Scroll, '<p>Hello</p><p>World!</p>');
     scroll.deleteAt(0, 5);
@@ -47,9 +40,9 @@ describe('Block', function() {
   });
 
   it('join lines', function() {
-    let scroll = this.initialize(Scroll, '<h1>Hello</h1><h2>World!</h2>');
+    let scroll = this.initialize(Scroll, '<p>Hello</p><p>World!</p>');
     scroll.deleteAt(5, 1);
-    expect(scroll.domNode).toEqualHTML('<h2>HelloWorld!</h2>');
+    expect(scroll.domNode).toEqualHTML('<p>HelloWorld!</p>');
   });
 
   it('join line with empty', function() {
@@ -59,21 +52,21 @@ describe('Block', function() {
   });
 
   it('join empty lines', function() {
-    let scroll = this.initialize(Scroll, '<h1><br></h1><p><br></p>');
+    let scroll = this.initialize(Scroll, '<p><br></p><p><br></p>');
     scroll.deleteAt(1, 1);
-    expect(scroll.domNode).toEqualHTML('<h1><br></h1>');
+    expect(scroll.domNode).toEqualHTML('<p><br></p>');
   });
 
   it('format empty', function() {
     let scroll = this.initialize(Scroll, '<p><br></p>');
-    scroll.formatAt(0, 1, 'header', 1);
-    expect(scroll.domNode).toEqualHTML('<h1><br></h1>');
+    scroll.formatAt(0, 1, 'blockquote', true);
+    expect(scroll.domNode).toEqualHTML('<blockquote><br></blockquote>');
   });
 
   it('format newline', function() {
-    let scroll = this.initialize(Scroll, '<h1>Hello</h1>');
-    scroll.formatAt(5, 1, 'header', 2);
-    expect(scroll.domNode).toEqualHTML('<h2>Hello</h2>');
+    let scroll = this.initialize(Scroll, '<p>Hello</p>');
+    scroll.formatAt(5, 1, 'blockquote', true);
+    expect(scroll.domNode).toEqualHTML('<blockquote>Hello</blockquote>');
   });
 
   it('remove unnecessary break', function() {

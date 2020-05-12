@@ -55,10 +55,10 @@ describe('Quill', function() {
     });
 
     it('No changes on collapsed format', function() {
-      this.setup('<h1><strong><em>0123</em></strong></h1>', 2);
+      this.setup('<blockquote><strong><em>0123</em></strong></blockquote>', 2);
       this.quill.format('underline', true);
       this.quill.format('color', 'red');
-      expect(this.quill.getFormat(2)).toEqual({ bold: true, italic: true, header: 1, color: 'red', underline: true });
+      expect(this.quill.getFormat(2)).toEqual({ bold: true, italic: true, blockquote: true, color: 'red', underline: true });
     });
 
     it('cleaning cursor format', function() {
@@ -153,9 +153,9 @@ describe('Quill', function() {
     });
 
     it('formatLine()', function() {
-      this.quill.formatLine(1, 1, 'header', 2);
-      let change = new Delta().retain(8).retain(1, { header: 2});
-      expect(this.quill.root).toEqualHTML('<h2>0123<em>45</em>67</h2>');
+      this.quill.formatLine(1, 1, 'blockquote', true);
+      let change = new Delta().retain(8).retain(1, { blockquote: true});
+      expect(this.quill.root).toEqualHTML('<blockquote>0123<em>45</em>67</blockquote>');
       expect(this.quill.emitter.emit).toHaveBeenCalledWith(Emitter.events.TEXT_CHANGE, change, this.oldDelta, Emitter.sources.API);
     });
 
@@ -309,7 +309,7 @@ describe('Quill', function() {
 
     it('basic formats', function() {
       let quill = this.initialize(Quill, '');
-      let delta = new Delta().insert('Welcome').insert('\n', { header: 1 })
+      let delta = new Delta().insert('Welcome').insert('\n', { blockquote: true })
                              .insert('Hello\n')
                              .insert('World')
                              .insert('!', { bold: true })
@@ -317,7 +317,7 @@ describe('Quill', function() {
       quill.setContents(delta);
       expect(quill.getContents()).toEqual(delta);
       expect(quill.root).toEqualHTML(`
-        <h1>Welcome</h1>
+        <blockquote>Welcome</blockquote>
         <p>Hello</p>
         <p>World<strong>!</strong></p>
       `);

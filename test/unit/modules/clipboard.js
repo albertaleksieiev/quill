@@ -6,7 +6,7 @@ import Quill from '../../../core';
 describe('Clipboard', function() {
   describe('events', function() {
     beforeEach(function() {
-      this.quill = this.initialize(Quill, '<h1>0123</h1><p>5<em>67</em>8</p>');
+      this.quill = this.initialize(Quill, '<p>0123</p><p>5<em>67</em>8</p>');
       this.quill.setSelection(2, 5);
     });
 
