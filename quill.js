@@ -8,10 +8,10 @@ import Blockquote from './formats/blockquote';
 import Header from './formats/header';
 import List, { ListItem } from './formats/list';
 
-import { BackgroundClass, BackgroundStyle } from './formats/background';
-import { ColorClass, ColorStyle } from './formats/color';
-import { FontClass, FontStyle } from './formats/font';
-import { SizeClass, SizeStyle } from './formats/size';
+import { BackgroundStyle } from './formats/background';
+import { ColorStyle } from './formats/color';
+import { FontStyle } from './formats/font';
+import { SizeStyle } from './formats/size';
 
 import Bold from './formats/bold';
 import Italic from './formats/italic';
@@ -44,11 +44,7 @@ Quill.register({
   'attributors/attribute/direction': DirectionAttribute,
 
   'attributors/class/align': AlignClass,
-  'attributors/class/background': BackgroundClass,
-  'attributors/class/color': ColorClass,
   'attributors/class/direction': DirectionClass,
-  'attributors/class/font': FontClass,
-  'attributors/class/size': SizeClass,
 
   'attributors/style/align': AlignStyle,
   'attributors/style/background': BackgroundStyle,
@@ -66,8 +62,8 @@ Quill.register({
 
   'formats/background': BackgroundStyle,
   'formats/color': ColorStyle,
-  'formats/font': FontClass,
-  'formats/size': SizeClass,
+  'formats/font': FontStyle,
+  'formats/size': SizeStyle,
 
   'formats/blockquote': Blockquote,
   'formats/code-block': CodeBlock,

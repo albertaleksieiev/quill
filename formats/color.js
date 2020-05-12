@@ -11,11 +11,8 @@ class ColorAttributor extends Parchment.Attributor.Style {
   }
 }
 
-let ColorClass = new Parchment.Attributor.Class('color', 'ql-color', {
-  scope: Parchment.Scope.INLINE
-});
 let ColorStyle = new ColorAttributor('color', 'color', {
   scope: Parchment.Scope.INLINE
 });
 
-export { ColorAttributor, ColorClass, ColorStyle };
+export { ColorAttributor, ColorStyle };

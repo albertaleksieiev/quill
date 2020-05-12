@@ -104,13 +104,13 @@ describe('Toolbar', function() {
         <p><strong>5678</strong></p>
         <p><a href="http://quilljs.com/">0123</a></p>
         <p class="ql-align-center">5678</p>
-        <p><span class="ql-size-small">01</span><span class="ql-size-large">23</span></p>
+        <p><span style="font-size: 12px">01</span><span style="font-size: 26px">23</span></p>
       `);
       this.quill = new Quill(container, {
         modules: {
           toolbar: [
             ['bold', 'link'],
-            [{ 'size': ['small', false, 'large'] }],
+            [{ 'size': ['12px', false, '26px'] }],
             [{ 'align': '' }, { 'align': 'center' }]
           ]
         },

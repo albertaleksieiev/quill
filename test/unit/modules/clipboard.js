@@ -80,8 +80,8 @@ describe('Clipboard', function() {
     });
 
     it('paste after link', function(done) {
-      let originalDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'});
-      let expectedDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: 'huge'})
+      let originalDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: '26px'});
+      let expectedDelta = new Delta().insert('Link', {link: 'http://amsterdam.nl', color: '#112233', underline: true, size: '26px'})
                                       .insert('Text\n');
       this.quill.setContents(originalDelta);
       this.quill.setSelection(this.quill.getLength() - 1, 0);

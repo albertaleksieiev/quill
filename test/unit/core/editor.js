@@ -423,21 +423,21 @@ describe('Editor', function() {
 
     it('across leaves', function() {
       let editor = this.initialize(Editor, `
-        <h1>
-          <strong class="ql-size-small"><em>01</em></strong>
-          <em class="ql-size-large"><u>23</u></em>
-          <em class="ql-size-huge"><u>45</u></em>
-        </h1>
+        <blockquote>
+          <strong style="font-size: 10px"><em>01</em></strong>
+          <em style="font-size: 18px"><u>23</u></em>
+          <em style="font-size: 26px"><u>45</u></em>
+        </blockquote>
       `);
-      expect(editor.getFormat(1, 4)).toEqual({ italic: true, header: 1, size: ['small', 'large', 'huge'] });
+      expect(editor.getFormat(1, 4)).toEqual({ italic: true, blockquote: true, size: ['10px', '18px', '26px'] });
     });
 
     it('across lines', function() {
       let editor = this.initialize(Editor, `
-        <h1 class="ql-align-right"><em>01</em></h1>
-        <h1 class="ql-align-center"><em>34</em></h1>
+        <blockquote class="ql-align-right"><em>01</em></blockquote>
+        <blockquote class="ql-align-center"><em>34</em></blockquote>
       `);
-      expect(editor.getFormat(1, 3)).toEqual({ italic: true, header: 1, align: ['right', 'center'] });
+      expect(editor.getFormat(1, 3)).toEqual({ italic: true, blockquote: true, align: ['right', 'center'] });
     });
   });
 });
