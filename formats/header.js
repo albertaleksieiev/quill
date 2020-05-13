@@ -1,13 +1,19 @@
-import Block from '../blots/block';
+import Bold from './bold';
+import { applyFormat } from '../modules/clipboard';
 
+const headersTagNames = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+const headersSelector = headersTagNames.join(", ")
 
-class Header extends Block {
-  static formats(domNode) {
-    return this.tagName.indexOf(domNode.tagName) + 1;
-  }
+function matchHeaders(node, delta) {
+    let format = {};
+    format[Bold.blotName] = true;
+
+    let fontSize = getComputedStyle(node).fontSize;
+    if (fontSize) {
+        format.size = fontSize;
+    }
+    delta = applyFormat(delta, format);
+    return delta;
 }
-Header.blotName = 'header';
-Header.tagName = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 
-
-export default Header;
+export { matchHeaders, headersSelector };

@@ -1,35 +1,33 @@
 import Delta from 'quill-delta';
-import Editor from '../../../core/editor';
+import Quill from '../../../core';
 
 
 describe('Header', function() {
-  it('add', function() {
-    let editor = this.initialize(Editor, '<p><em>0123</em></p>');
-    editor.formatText(4, 1, { header: 1 });
-    expect(editor.getDelta()).toEqual(new Delta()
-      .insert('0123', { italic: true })
-      .insert('\n', { header: 1 })
-    );
-    expect(editor.scroll.domNode).toEqualHTML('<h1><em>0123</em></h1>');
+  it('parse', function() {
+    let expectedDelta = new Delta()
+                            .insert('Test', { size: '26px', bold: true })
+                            .insert('\n\n')
+    let quill = this.initialize(Quill, '');
+    quill.clipboard.dangerouslyPasteHTML(0, '<h1>Test</h1>')
+    expect(quill.getContents()).toEqual(expectedDelta);
   });
 
-  it('remove', function() {
-    let editor = this.initialize(Editor, '<h1><em>0123</em></h1>');
-    editor.formatText(4, 1, { header: false });
-    expect(editor.getDelta()).toEqual(new Delta()
-      .insert('0123', { italic: true })
-      .insert('\n')
-    );
-    expect(editor.scroll.domNode).toEqualHTML('<p><em>0123</em></p>');
+  it('parse with font', function() {
+    let expectedDelta = new Delta()
+                            .insert('Test', { size: '8px', bold: true })
+                            .insert('\n\n')
+    let quill = this.initialize(Quill, '');
+    quill.clipboard.dangerouslyPasteHTML(0, '<h1 style="font-size: 8px">Test</h1>')
+    expect(quill.getContents()).toEqual(expectedDelta);
   });
 
-  it('change', function() {
-    let editor = this.initialize(Editor, '<h1><em>0123</em></h1>');
-    editor.formatText(4, 1, { header: 2 });
-    expect(editor.getDelta()).toEqual(new Delta()
-      .insert('0123', { italic: true })
-      .insert('\n', { header: 2 })
-    );
-    expect(editor.scroll.domNode).toEqualHTML('<h2><em>0123</em></h2>');
+  it('is block', function() {
+    let expectedDelta = new Delta()
+                            .insert('Test', { size: '26px', bold: true })
+                            .insert('\n')
+                            .insert('After\n');
+    let quill = this.initialize(Quill, '');
+    quill.clipboard.dangerouslyPasteHTML(0, '<h1>Test</h1>After')
+    expect(quill.getContents()).toEqual(expectedDelta);
   });
 });

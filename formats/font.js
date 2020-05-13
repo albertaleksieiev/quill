@@ -1,11 +1,8 @@
 import Parchment from 'parchment';
 
 let config = {
-  scope: Parchment.Scope.INLINE,
-  whitelist: ['serif', 'monospace']
+  scope: Parchment.Scope.INLINE
 };
-
-let FontClass = new Parchment.Attributor.Class('font', 'ql-font', config);
 
 class FontStyleAttributor extends Parchment.Attributor.Style {
   value(node) {
@@ -15,4 +12,4 @@ class FontStyleAttributor extends Parchment.Attributor.Style {
 
 let FontStyle = new FontStyleAttributor('font', 'font-family', config);
 
-export { FontStyle, FontClass };
+export { FontStyle };

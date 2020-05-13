@@ -204,8 +204,8 @@ describe('Editor', function() {
   describe('format', function() {
     it('line', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.formatLine(1, 1, { header: 1 });
-      expect(editor.scroll.domNode).toEqualHTML('<h1>0123</h1>');
+      editor.formatLine(1, 1, { blockquote: true });
+      expect(editor.scroll.domNode).toEqualHTML('<blockquote>0123</blockquote>');
     });
   });
 
@@ -307,9 +307,9 @@ describe('Editor', function() {
     });
 
     it('unformatted newline', function() {
-      let editor = this.initialize(Editor, '<h1>01</h1>');
+      let editor = this.initialize(Editor, '<blockquote>01</blockquote>');
       editor.applyDelta(new Delta().retain(2).insert('\n'));
-      expect(this.container).toEqualHTML('<p>01</p><h1><br></h1>');
+      expect(this.container).toEqualHTML('<p>01</p><blockquote><br></blockquote>');
     });
 
     it('formatted embed', function() {
@@ -353,41 +353,41 @@ describe('Editor', function() {
 
     it('append newline', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.applyDelta(new Delta().retain(5).insert('\n', { header: 2 }));
-      expect(this.container).toEqualHTML('<p>0123</p><h2><br></h2>');
+      editor.applyDelta(new Delta().retain(5).insert('\n', { blockquote: true }));
+      expect(this.container).toEqualHTML('<p>0123</p><blockquote><br></blockquote>');
     })
 
     it('append text with newline', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.applyDelta(new Delta().retain(5).insert('5678').insert('\n', { header: 2 }));
-      expect(this.container).toEqualHTML('<p>0123</p><h2>5678</h2>');
+      editor.applyDelta(new Delta().retain(5).insert('5678').insert('\n', { blockquote: true }));
+      expect(this.container).toEqualHTML('<p>0123</p><blockquote>5678</blockquote>');
     });
 
     it('append non-isolated newline', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.applyDelta(new Delta().retain(5).insert('5678\n', { header: 2 }));
-      expect(this.container).toEqualHTML('<p>0123</p><h2>5678</h2>');
+      editor.applyDelta(new Delta().retain(5).insert('5678\n', { blockquote: true }));
+      expect(this.container).toEqualHTML('<p>0123</p><blockquote>5678</blockquote>');
     });
 
     it('eventual append', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.applyDelta(new Delta().retain(2).insert('ab\n', { header: 1 }).retain(3).insert('cd\n', { header: 2 }));
-      expect(this.container).toEqualHTML('<h1>01ab</h1><p>23</p><h2>cd</h2>');
+      editor.applyDelta(new Delta().retain(2).insert('ab\n', { blockquote: true }).retain(3).insert('cd\n', { blockquote: false }));
+      expect(this.container).toEqualHTML('<blockquote>01ab</blockquote><p>23</p><p>cd</p>');
     });
 
     it('append text, embed and newline', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
-      editor.applyDelta(new Delta().retain(5).insert('5678').insert({ image: '/assets/favicon.png' }).insert('\n', { header: 2 }));
-      expect(this.container).toEqualHTML('<p>0123</p><h2>5678<img src="/assets/favicon.png"></h2>');
+      editor.applyDelta(new Delta().retain(5).insert('5678').insert({ image: '/assets/favicon.png' }).insert('\n', { blockquote: true }));
+      expect(this.container).toEqualHTML('<p>0123</p><blockquote>5678<img src="/assets/favicon.png"></blockquote>');
     });
 
     it('append multiple lines', function() {
       let editor = this.initialize(Editor, '<p>0123</p>');
       editor.applyDelta(new Delta().retain(5)
-        .insert('56').insert('\n', { header: 1 })
-        .insert('89').insert('\n', { header: 2 })
+        .insert('56').insert('\n', { blockquote: true })
+        .insert('89').insert('\n', { blockquote: false })
       );
-      expect(this.container).toEqualHTML('<p>0123</p><h1>56</h1><h2>89</h2>');
+      expect(this.container).toEqualHTML('<p>0123</p><blockquote>56</blockquote><p>89</p>');
     });
 
     it('append multilined text with same format', function() {
@@ -412,32 +412,32 @@ describe('Editor', function() {
     })
 
     it('formatted', function() {
-      let editor = this.initialize(Editor, '<h1><em>0123</em></h1>');
-      expect(editor.getFormat(1)).toEqual({ header: 1, italic: true });
+      let editor = this.initialize(Editor, '<blockquote><em>0123</em></blockquote>');
+      expect(editor.getFormat(1)).toEqual({ blockquote: true, italic: true });
     })
 
     it('cursor', function() {
-      let editor = this.initialize(Editor, '<h1><strong><em>0123</em></strong></h1><h2><u>5678</u></h2>');
-      expect(editor.getFormat(2)).toEqual({ bold: true, italic: true, header: 1 });
+      let editor = this.initialize(Editor, '<blockquote><strong><em>0123</em></strong></blockquote>p><u>5678</u></p>');
+      expect(editor.getFormat(2)).toEqual({ bold: true, italic: true, blockquote: true });
     });
 
     it('across leaves', function() {
       let editor = this.initialize(Editor, `
-        <h1>
-          <strong class="ql-size-small"><em>01</em></strong>
-          <em class="ql-size-large"><u>23</u></em>
-          <em class="ql-size-huge"><u>45</u></em>
-        </h1>
+        <blockquote>
+          <strong style="font-size: 10px"><em>01</em></strong>
+          <em style="font-size: 18px"><u>23</u></em>
+          <em style="font-size: 26px"><u>45</u></em>
+        </blockquote>
       `);
-      expect(editor.getFormat(1, 4)).toEqual({ italic: true, header: 1, size: ['small', 'large', 'huge'] });
+      expect(editor.getFormat(1, 4)).toEqual({ italic: true, blockquote: true, size: ['10px', '18px', '26px'] });
     });
 
     it('across lines', function() {
       let editor = this.initialize(Editor, `
-        <h1 class="ql-align-right"><em>01</em></h1>
-        <h1 class="ql-align-center"><em>34</em></h1>
+        <blockquote class="ql-align-right"><em>01</em></blockquote>
+        <blockquote class="ql-align-center"><em>34</em></blockquote>
       `);
-      expect(editor.getFormat(1, 3)).toEqual({ italic: true, header: 1, align: ['right', 'center'] });
+      expect(editor.getFormat(1, 3)).toEqual({ italic: true, blockquote: true, align: ['right', 'center'] });
     });
   });
 });

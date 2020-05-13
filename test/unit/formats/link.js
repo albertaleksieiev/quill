@@ -48,10 +48,10 @@ describe('Link', function() {
   });
 
   it('remove', function() {
-    let editor = this.initialize(Editor, '<p>0<a class="ql-size-large" href="https://quilljs.com" target="_blank">12</a>3</p>');
+    let editor = this.initialize(Editor, '<p>0<a style="font-size: 26px" href="https://quilljs.com" target="_blank">12</a>3</p>');
     editor.formatText(1, 2, { link: false });
-    let delta = new Delta().insert('0').insert('12', { size: 'large' }).insert('3\n');
+    let delta = new Delta().insert('0').insert('12', { size: '26px' }).insert('3\n');
     expect(editor.getDelta()).toEqual(delta);
-    expect(editor.scroll.domNode).toEqualHTML('<p>0<span class="ql-size-large">12</span>3</p>');
+    expect(editor.scroll.domNode).toEqualHTML('<p>0<span style="font-size: 26px;">12</span>3</p>');
   });
 });

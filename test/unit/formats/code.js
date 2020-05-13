@@ -119,42 +119,42 @@ describe('Code', function() {
   });
 
   it('delete merge before', function() {
-    let editor = this.initialize(Editor, { html: '<h1>0123</h1><pre>4567\n</pre>' });
+    let editor = this.initialize(Editor, { html: '<blockquote>0123</blockquote><pre>4567\n</pre>' });
     editor.deleteText(4, 1);
     expect(editor.getDelta()).toEqual(new Delta().insert('01234567').insert('\n', { 'code-block': true }));
     expect(editor.scroll.domNode).toEqualHTML('<pre>01234567\n</pre>');
   });
 
   it('delete merge after', function() {
-    let editor = this.initialize(Editor, { html: '<pre>0123\n</pre><h1>4567</h1>' });
+    let editor = this.initialize(Editor, { html: '<pre>0123\n</pre><blockquote>4567</blockquote>' });
     editor.deleteText(4, 1);
-    expect(editor.getDelta()).toEqual(new Delta().insert('01234567').insert('\n', { header: 1 }));
-    expect(editor.scroll.domNode).toEqualHTML('<h1>01234567</h1>');
+    expect(editor.getDelta()).toEqual(new Delta().insert('01234567').insert('\n', { blockquote: true }));
+    expect(editor.scroll.domNode).toEqualHTML('<blockquote>01234567</blockquote>');
   });
 
   it('delete across before partial merge', function() {
-    let editor = this.initialize(Editor, { html: '<pre>01\n34\n67\n</pre><h1>90</h1>' });
+    let editor = this.initialize(Editor, { html: '<pre>01\n34\n67\n</pre><blockquote>90</blockquote>' });
     editor.deleteText(7, 3);
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('01').insert('\n', { 'code-block': true })
       .insert('34').insert('\n', { 'code-block': true })
-      .insert('60').insert('\n', { header: 1 })
+      .insert('60').insert('\n', { blockquote: true })
     );
-    expect(editor.scroll.domNode.innerHTML).toEqualHTML('<pre>01\n34\n</pre><h1>60</h1>');
+    expect(editor.scroll.domNode.innerHTML).toEqualHTML('<pre>01\n34\n</pre><blockquote>60</blockquote>');
   });
 
   it('delete across before no merge', function() {
-    let editor = this.initialize(Editor, { html: '<pre>01\n34\n</pre><h1>6789</h1>' });
+    let editor = this.initialize(Editor, { html: '<pre>01\n34\n</pre><blockquote>6789</blockquote>' });
     editor.deleteText(3, 5);
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('01').insert('\n', { 'code-block': true })
-      .insert('89').insert('\n', { header: 1 })
+      .insert('89').insert('\n', { blockquote: true })
     );
-    expect(editor.scroll.domNode.innerHTML).toEqualHTML('<pre>01\n</pre><h1>89</h1>');
+    expect(editor.scroll.domNode.innerHTML).toEqualHTML('<pre>01\n</pre><blockquote>89</blockquote>');
   });
 
   it('delete across after', function() {
-    let editor = this.initialize(Editor, { html: '<h1>0123</h1><pre>56\n89\n</pre>' });
+    let editor = this.initialize(Editor, { html: '<blockquote>0123</blockquote><pre>56\n89\n</pre>' });
     editor.deleteText(2, 4);
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('016').insert('\n', { 'code-block': true })
@@ -165,46 +165,46 @@ describe('Code', function() {
 
   it('replace', function() {
     let editor = this.initialize(Editor, { html: '<pre>0123\n</pre>' });
-    editor.formatText(4, 1, { 'header': 1 });
-    expect(editor.getDelta()).toEqual(new Delta().insert('0123').insert('\n', { header: 1 }));
-    expect(editor.scroll.domNode).toEqualHTML('<h1>0123</h1>');
+    editor.formatText(4, 1, { 'blockquote': true });
+    expect(editor.getDelta()).toEqual(new Delta().insert('0123').insert('\n', { blockquote: true }));
+    expect(editor.scroll.domNode).toEqualHTML('<blockquote>0123</blockquote>');
   });
 
   it('replace multiple', function() {
     let editor = this.initialize(Editor, { html: '<pre>01\n23\n</pre>' });
-    editor.formatText(0, 6, { 'header': 1 });
+    editor.formatText(0, 6, { 'blockquote': true });
     expect(editor.getDelta()).toEqual(new Delta()
-      .insert('01').insert('\n', { header: 1 })
-      .insert('23').insert('\n', { header: 1 })
+      .insert('01').insert('\n', { blockquote: true })
+      .insert('23').insert('\n', { blockquote: true })
     );
-    expect(editor.scroll.domNode).toEqualHTML('<h1>01</h1><h1>23</h1>');
+    expect(editor.scroll.domNode).toEqualHTML('<blockquote>01</blockquote><blockquote>23</blockquote>');
   });
 
   it('format interior line', function() {
     let editor = this.initialize(Editor, { html: '<pre>01\n23\n45\n</pre>' });
-    editor.formatText(5, 1, { 'header': 1 });
+    editor.formatText(5, 1, { 'blockquote': true });
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('01').insert('\n', { 'code-block': true })
-      .insert('23').insert('\n', { 'header': 1 })
+      .insert('23').insert('\n', { 'blockquote': true })
       .insert('45').insert('\n', { 'code-block': true })
     );
-    expect(editor.scroll.domNode.innerHTML).toEqual('<pre>01\n</pre><h1>23</h1><pre>45\n</pre>');
+    expect(editor.scroll.domNode.innerHTML).toEqual('<pre>01\n</pre><blockquote>23</blockquote><pre>45\n</pre>');
   });
 
   it('format imprecise bounds', function() {
     let editor = this.initialize(Editor, { html: '<pre>01\n23\n45\n</pre>' });
-    editor.formatText(1, 6, { 'header': 1 });
+    editor.formatText(1, 6, { 'blockquote': true });
     expect(editor.getDelta()).toEqual(new Delta()
-      .insert('01').insert('\n', { 'header': 1 })
-      .insert('23').insert('\n', { 'header': 1 })
+      .insert('01').insert('\n', { 'blockquote': true })
+      .insert('23').insert('\n', { 'blockquote': true })
       .insert('45').insert('\n', { 'code-block': true })
     );
-    expect(editor.scroll.domNode.innerHTML).toEqual('<h1>01</h1><h1>23</h1><pre>45\n</pre>');
+    expect(editor.scroll.domNode.innerHTML).toEqual('<blockquote>01</blockquote><blockquote>23</blockquote><pre>45\n</pre>');
   });
 
   it('format without newline', function() {
     let editor = this.initialize(Editor, { html: '<pre>01\n23\n45\n</pre>' });
-    editor.formatText(3, 1, { 'header': 1 });
+    editor.formatText(3, 1, { 'blockquote': true });
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('01').insert('\n', { 'code-block': true })
       .insert('23').insert('\n', { 'code-block': true })
@@ -215,13 +215,13 @@ describe('Code', function() {
 
   it('format line', function() {
     let editor = this.initialize(Editor, { html: '<pre>01\n23\n45\n</pre>' });
-    editor.formatLine(3, 1, { 'header': 1 });
+    editor.formatLine(3, 1, { 'blockquote': true });
     expect(editor.getDelta()).toEqual(new Delta()
       .insert('01').insert('\n', { 'code-block': true })
-      .insert('23').insert('\n', { 'header': 1 })
+      .insert('23').insert('\n', { 'blockquote': true })
       .insert('45').insert('\n', { 'code-block': true })
     );
-    expect(editor.scroll.domNode.innerHTML).toEqual('<pre>01\n</pre><h1>23</h1><pre>45\n</pre>');
+    expect(editor.scroll.domNode.innerHTML).toEqual('<pre>01\n</pre><blockquote>23</blockquote><pre>45\n</pre>');
   });
 
   it('ignore formatAt', function() {
