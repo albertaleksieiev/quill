@@ -7,6 +7,10 @@ const ATTRIBUTES = [
   'width'
 ];
 
+const STYLES = [
+  'height',
+  'width'
+];
 
 class Image extends Parchment.Embed {
   static create(value) {
@@ -18,12 +22,19 @@ class Image extends Parchment.Embed {
   }
 
   static formats(domNode) {
-    return ATTRIBUTES.reduce(function(formats, attribute) {
+    let attributes = ATTRIBUTES.reduce(function(formats, attribute) {
       if (domNode.hasAttribute(attribute)) {
         formats[attribute] = domNode.getAttribute(attribute);
       }
       return formats;
     }, {});
+    let styles = STYLES.reduce(function(formats, style) {
+      if (domNode.style[style]) {
+        formats[style] = domNode.style[style];
+      }
+      return formats;
+    }, {});
+    return Object.assign(attributes, styles);
   }
 
   static match(url) {
@@ -44,6 +55,9 @@ class Image extends Parchment.Embed {
         this.domNode.setAttribute(name, value);
       } else {
         this.domNode.removeAttribute(name);
+      }
+      if (STYLES.indexOf(name) > -1) {
+        this.domNode.style[name] = null;
       }
     } else {
       super.format(name, value);
