@@ -2,7 +2,6 @@ import Delta from 'quill-delta';
 import DeltaOp from 'quill-delta/lib/op';
 import Parchment from 'parchment';
 import CodeBlock from '../formats/code';
-import CursorBlot from '../blots/cursor';
 import Block, { bubbleFormats } from '../blots/block';
 import Break from '../blots/break';
 import clone from 'clone';
@@ -24,7 +23,7 @@ class Editor {
     this.scroll.update();
     let scrollLength = this.scroll.length();
     this.scroll.batchStart();
-    delta = normalizeDelta(delta);
+    delta = normalizeDelta(delta, this.scroll);
     delta.reduce((index, op) => {
       let length = op.retain || op.delete || op.insert.length || 1;
       let attributes = op.attributes || {};
@@ -77,7 +76,6 @@ class Editor {
   formatLine(index, length, formats = {}) {
     this.scroll.update();
     Object.keys(formats).forEach((format) => {
-      if (this.scroll.whitelist != null && !this.scroll.whitelist[format]) return;
       let lines = this.scroll.lines(index, Math.max(length, 1));
       let lengthRemaining = length;
       lines.forEach((line) => {
@@ -195,12 +193,12 @@ class Editor {
     if (mutations.length === 1 &&
         mutations[0].type === 'characterData' &&
         mutations[0].target.data.match(ASCII) &&
-        Parchment.find(mutations[0].target)) {
+        this.scroll.find(mutations[0].target)) {
       // Optimization for character changes
-      let textBlot = Parchment.find(mutations[0].target);
+      let textBlot = this.scroll.find(mutations[0].target);
       let formats = bubbleFormats(textBlot);
       let index = textBlot.offset(this.scroll);
-      let oldValue = mutations[0].oldValue.replace(CursorBlot.CONTENTS, '');
+      let oldValue = mutations[0].oldValue;
       let oldText = new Delta().insert(oldValue);
       let newText = new Delta().insert(textBlot.value());
       let diffDelta = new Delta().retain(index).concat(oldText.diff(newText, cursorIndex));
@@ -239,7 +237,7 @@ function combineFormats(formats, combined) {
   }, {});
 }
 
-function normalizeDelta(delta) {
+function normalizeDelta(delta, scroll) {
   return delta.reduce(function(delta, op) {
     if (op.insert === 1) {
       let attributes = clone(op.attributes);
@@ -257,21 +255,21 @@ function normalizeDelta(delta) {
     }
     if (typeof op.insert === 'string') {
       let text = op.insert.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      let insertDelta = normalizeInsert(text, op.attributes);
+      let insertDelta = normalizeInsert(text, op.attributes, scroll);
       return delta.concat(insertDelta);
     }
     return delta.push(op);
   }, new Delta());
 }
 
-function normalizeInsert(text, attributes) {
+function normalizeInsert(text, attributes, scroll) {
   let delta = new Delta();
 
   attributes = attributes || {}
   let inlineAttributes = {}
   let blockAttributes = {}
   Object.keys(attributes).forEach((name) => {
-    if (Parchment.query(name, Parchment.Scope.INLINE) != null) {
+    if (scroll.query(name, Parchment.Scope.INLINE) != null) {
       inlineAttributes[name] = attributes[name];
     } else {
       blockAttributes[name] = attributes[name];

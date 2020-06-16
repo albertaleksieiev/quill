@@ -2,7 +2,7 @@ import Editor from '../../core/editor';
 import Emitter from '../../core/emitter';
 import Selection from '../../core/selection';
 import Scroll from '../../blots/scroll';
-import Quill from '../../core/quill';
+import Quill, { globalRegistry } from '../../core/quill';
 import equal from 'deep-equal';
 
 
@@ -108,7 +108,7 @@ function initialize(klass, html, container = this.container) {
   if (klass === HTMLElement) return container;
   if (klass === Quill) return new Quill(container);
   let emitter = new Emitter();
-  let scroll = new Scroll(container, { emitter: emitter });
+  const scroll = new Scroll(globalRegistry, container, { emitter });
   if (klass === Scroll) return scroll;
   if (klass === Editor) return new Editor(scroll);
   if (klass === Selection) return new Selection(scroll, emitter);

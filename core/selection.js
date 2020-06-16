@@ -105,7 +105,6 @@ class Selection {
   }
 
   format(format, value) {
-    if (this.scroll.whitelist != null && !this.scroll.whitelist[format]) return;
     if (this.composing) return;
     this.update();
     if (!this.cursorFormat || this.cursorFormat.index != this.lastRange.index) {
@@ -192,7 +191,7 @@ class Selection {
     }
     let indexes = positions.map((position) => {
       let [node, offset] = position;
-      let blot = Parchment.find(node, true);
+      let blot = this.scroll.find(node, true);
       let index = blot.offset(this.scroll);
       if (offset === 0) {
         return index;

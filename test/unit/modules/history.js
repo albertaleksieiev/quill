@@ -1,5 +1,6 @@
 import Delta from 'quill-delta';
 import Quill from '../../../core';
+import { globalRegistry } from '../../../core/quill';
 import { getLastChangeIndex } from '../../../modules/history';
 
 
@@ -7,52 +8,52 @@ describe('History', function() {
   describe('getLastChangeIndex', function() {
     it('delete', function() {
       let delta = new Delta().retain(4).delete(2);
-      expect(getLastChangeIndex(delta)).toEqual(4);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(4);
     });
 
     it('delete with inserts', function() {
       let delta = new Delta().retain(4).insert('test').delete(2);
-      expect(getLastChangeIndex(delta)).toEqual(8);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(8);
     });
 
     it('insert text', function() {
       let delta = new Delta().retain(4).insert('testing');
-      expect(getLastChangeIndex(delta)).toEqual(11);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(11);
     });
 
     it('insert embed', function() {
       let delta = new Delta().retain(4).insert({ image: true });
-      expect(getLastChangeIndex(delta)).toEqual(5);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(5);
     });
 
     it('insert with deletes', function() {
       let delta = new Delta().retain(4).delete(3).insert('!');
-      expect(getLastChangeIndex(delta)).toEqual(5);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(5);
     });
 
     it('format', function() {
       let delta = new Delta().retain(4).retain(3, { bold: true });
-      expect(getLastChangeIndex(delta)).toEqual(7);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(7);
     });
 
     it('format newline', function() {
       let delta = new Delta().retain(4).retain(1, { align: 'left' });
-      expect(getLastChangeIndex(delta)).toEqual(4);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(4);
     });
 
     it('format mixed', function() {
       let delta = new Delta().retain(4).retain(1, { align: 'left', bold: true });
-      expect(getLastChangeIndex(delta)).toEqual(4);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(4);
     });
 
     it('insert newline', function() {
       let delta = new Delta().retain(4).insert('a\n');
-      expect(getLastChangeIndex(delta)).toEqual(5);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(5);
     });
 
     it('mutliple newline inserts', function() {
       let delta = new Delta().retain(4).insert('ab\n\n');
-      expect(getLastChangeIndex(delta)).toEqual(7);
+      expect(getLastChangeIndex(globalRegistry, delta)).toEqual(7);
     });
   });
 

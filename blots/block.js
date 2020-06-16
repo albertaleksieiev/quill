@@ -20,7 +20,7 @@ class BlockEmbed extends Parchment.Embed {
   }
 
   format(name, value) {
-    let attribute = Parchment.query(name, Parchment.Scope.BLOCK_ATTRIBUTE);
+    let attribute = this.scroll.query(name, Parchment.Scope.BLOCK_ATTRIBUTE);
     if (attribute != null) {
       this.attributes.attribute(attribute, value);
     }
@@ -32,7 +32,7 @@ class BlockEmbed extends Parchment.Embed {
 
   insertAt(index, value, def) {
     if (typeof value === 'string' && value.endsWith('\n')) {
-      let block = Parchment.create(Block.blotName);
+      let block = this.scroll.create(Block.blotName);
       this.parent.insertBefore(block, index === 0 ? this : this.next);
       block.insertAt(0, value.slice(0, -1));
     } else {
@@ -45,8 +45,8 @@ BlockEmbed.scope = Parchment.Scope.BLOCK_BLOT;
 
 
 class Block extends Parchment.Block {
-  constructor(domNode) {
-    super(domNode);
+  constructor(scroll, domNode) {
+    super(scroll, domNode);
     this.cache = {};
   }
 
@@ -70,7 +70,7 @@ class Block extends Parchment.Block {
 
   formatAt(index, length, name, value) {
     if (length <= 0) return;
-    if (Parchment.query(name, Parchment.Scope.BLOCK)) {
+    if (this.scroll.query(name, Parchment.Scope.BLOCK)) {
       if (index + length === this.length()) {
         this.format(name, value);
       }

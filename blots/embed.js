@@ -5,8 +5,8 @@ const GUARD_TEXT = "\uFEFF";
 
 
 class Embed extends Parchment.Embed {
-  constructor(node) {
-    super(node);
+  constructor(scroll, node) {
+    super(scroll, node);
     this.contentNode = document.createElement('span');
     this.contentNode.setAttribute('contenteditable', false);
     [].slice.call(this.domNode.childNodes).forEach((childNode) => {
@@ -38,7 +38,7 @@ class Embed extends Parchment.Embed {
         };
       } else {
         textNode = document.createTextNode(text);
-        this.parent.insertBefore(Parchment.create(textNode), this);
+        this.parent.insertBefore(this.scroll.create(textNode), this);
         range = {
           startNode: textNode,
           startOffset: text.length
@@ -53,7 +53,7 @@ class Embed extends Parchment.Embed {
         }
       } else {
         textNode = document.createTextNode(text);
-        this.parent.insertBefore(Parchment.create(textNode), this.next);
+        this.parent.insertBefore(this.scroll.create(textNode), this.next);
         range = {
           startNode: textNode,
           startOffset: text.length

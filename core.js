@@ -1,10 +1,8 @@
-import Parchment from 'parchment';
 import Quill from './core/quill';
 
 import Block, { BlockEmbed } from './blots/block';
 import Break from './blots/break';
 import Container from './blots/container';
-import Cursor from './blots/cursor';
 import Embed from './blots/embed';
 import Inline from './blots/inline';
 import Scroll from './blots/scroll';
@@ -19,7 +17,6 @@ Quill.register({
   'blots/block/embed'  : BlockEmbed,
   'blots/break'        : Break,
   'blots/container'    : Container,
-  'blots/cursor'       : Cursor,
   'blots/embed'        : Embed,
   'blots/inline'       : Inline,
   'blots/scroll'       : Scroll,
@@ -29,8 +26,5 @@ Quill.register({
   'modules/history'    : History,
   'modules/keyboard'   : Keyboard
 });
-
-Parchment.register(Block, Break, Cursor, Inline, Scroll, TextBlot);
-
 
 export default Quill;
