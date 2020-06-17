@@ -12,15 +12,9 @@ function isLine(blot) {
 
 
 class Scroll extends Parchment.Scroll {
-  constructor(domNode, config) {
-    super(domNode);
-    this.emitter = config.emitter;
-    if (Array.isArray(config.whitelist)) {
-      this.whitelist = config.whitelist.reduce(function(whitelist, format) {
-        whitelist[format] = true;
-        return whitelist;
-      }, {});
-    }
+  constructor(registry, domNode, { emitter }) {
+    super(registry, domNode);
+    this.emitter = emitter;
     // Some reason fixes composition issues with character languages in Windows/Chrome, Safari
     this.domNode.addEventListener('DOMNodeInserted', function() {});
     this.optimize();
@@ -72,23 +66,21 @@ class Scroll extends Parchment.Scroll {
   }
 
   formatAt(index, length, format, value) {
-    if (this.whitelist != null && !this.whitelist[format]) return;
     super.formatAt(index, length, format, value);
     this.optimize();
   }
 
   insertAt(index, value, def) {
-    if (def != null && this.whitelist != null && !this.whitelist[value]) return;
     if (index >= this.length()) {
-      if (def == null || Parchment.query(value, Parchment.Scope.BLOCK) == null) {
-        let blot = Parchment.create(this.statics.defaultChild);
+      if (def == null || this.scroll.query(value, Parchment.Scope.BLOCK) == null) {
+        let blot = this.scroll.create(this.statics.defaultChild);
         this.appendChild(blot);
         if (def == null && value.endsWith('\n')) {
           value = value.slice(0, -1);
         }
         blot.insertAt(0, value, def);
       } else {
-        let embed = Parchment.create(value, def);
+        let embed = this.scroll.create(value, def);
         this.appendChild(embed);
       }
     } else {
@@ -99,7 +91,7 @@ class Scroll extends Parchment.Scroll {
 
   insertBefore(blot, ref) {
     if (blot.statics.scope === Parchment.Scope.INLINE_BLOT) {
-      let wrapper = Parchment.create(this.statics.defaultChild);
+      let wrapper = this.scroll.create(this.statics.defaultChild);
       wrapper.appendChild(blot);
       blot = wrapper;
     }

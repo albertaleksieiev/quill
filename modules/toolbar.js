@@ -58,15 +58,9 @@ class Toolbar extends Module {
     if (input.tagName === 'BUTTON') {
       input.setAttribute('type', 'button');
     }
-    if (this.handlers[format] == null) {
-      if (this.quill.scroll.whitelist != null && this.quill.scroll.whitelist[format] == null) {
-        debug.warn('ignoring attaching to disabled format', format, input);
-        return;
-      }
-      if (Parchment.query(format) == null) {
-        debug.warn('ignoring attaching to nonexistent format', format, input);
-        return;
-      }
+    if (this.handlers[format] == null && this.quill.scroll.query(format) == null) {
+      debug.warn('ignoring attaching to nonexistent format', format, input);
+      return;
     }
     let eventName = input.tagName === 'SELECT' ? 'change' : 'click';
     input.addEventListener(eventName, (e) => {
@@ -91,7 +85,7 @@ class Toolbar extends Module {
       let [range, ] = this.quill.selection.getRange();
       if (this.handlers[format] != null) {
         this.handlers[format].call(this, value);
-      } else if (Parchment.query(format).prototype instanceof Parchment.Embed) {
+      } else if (this.quill.scroll.query(format).prototype instanceof Parchment.Embed) {
         value = prompt(`Enter ${format}`);
         if (!value) return;
         this.quill.updateContents(new Delta()
@@ -210,7 +204,7 @@ Toolbar.DEFAULTS = {
         let formats = this.quill.getFormat();
         Object.keys(formats).forEach((name) => {
           // Clean functionality in existing apps only clean inline formats
-          if (Parchment.query(name, Parchment.Scope.INLINE) != null) {
+          if (this.quill.scroll.query(name, Parchment.Scope.INLINE) != null) {
             this.quill.format(name, false);
           }
         });

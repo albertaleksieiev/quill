@@ -35,11 +35,6 @@ class Keyboard extends Module {
       });
     }
     Object.keys(this.options.bindings).forEach((name) => {
-      if (name === 'list autofill' &&
-          quill.scroll.whitelist != null &&
-          !quill.scroll.whitelist['list']) {
-        return;
-      }
       if (this.options.bindings[name]) {
         this.addBinding(this.options.bindings[name]);
       }
@@ -308,6 +303,7 @@ Keyboard.DEFAULTS = {
       format: { list: false },
       prefix: /^\s*?(1\.|-|\*|\[ ?\]|\[x\])$/,
       handler: function(range, context) {
+        if (this.quill.scroll.query('list') == null) return true;
         let length = context.prefix.length;
         let [line, offset] = this.quill.getLine(range.index);
         if (offset > length) return true;
@@ -367,7 +363,7 @@ Keyboard.DEFAULTS = {
 
 function applyFormatFromContext(context) {
   Object.keys(context.format).forEach((name) => {
-    if (Parchment.query(name, Parchment.Scope.INLINE) == null) {
+    if (this.quill.scroll.query(name, Parchment.Scope.INLINE) == null) {
       return;
     }
     this.quill.format(name, context.format[name]);
@@ -469,8 +465,8 @@ function handleEnter(range, context) {
   if (range.length > 0) {
     this.quill.scroll.deleteAt(range.index, range.length);  // So we do not trigger text-change
   }
-  let lineFormats = Object.keys(context.format).reduce(function(lineFormats, format) {
-    if (Parchment.query(format, Parchment.Scope.BLOCK) && !Array.isArray(context.format[format])) {
+  let lineFormats = Object.keys(context.format).reduce((lineFormats, format) => {
+    if (this.quill.scroll.query(format, Parchment.Scope.BLOCK) && !Array.isArray(context.format[format])) {
       lineFormats[format] = context.format[format];
     }
     return lineFormats;
@@ -494,7 +490,7 @@ function makeCodeBlockHandler(indent) {
     shiftKey: !indent,
     format: {'code-block': true },
     handler: function(range) {
-      let CodeBlock = Parchment.query('code-block');
+      let CodeBlock = this.quill.scroll.query('code-block');
       let index = range.index, length = range.length;
       let [block, offset] = this.quill.scroll.descendant(CodeBlock, index);
       if (block == null) return;

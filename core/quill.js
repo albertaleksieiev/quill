@@ -11,6 +11,7 @@ import Theme from './theme';
 
 let debug = logger('quill');
 
+const globalRegistry = new Parchment.Registry();
 
 class CursorFormatPostmodificationInfo {
   constructor(format, index, length) {
@@ -29,7 +30,7 @@ class Quill {
   }
 
   static find(node) {
-    return node.__quill || Parchment.find(node);
+    return node.__quill || globalRegistry.find(node);
   }
 
   static import(name) {
@@ -61,9 +62,9 @@ class Quill {
       this.imports[path] = target;
       if ((path.startsWith('blots/') || path.startsWith('formats/')) &&
           target.blotName !== 'abstract') {
-        Parchment.register(target);
+        globalRegistry.register(target);
       } else if (path.startsWith('modules') && typeof target.register === 'function') {
-        target.register();
+        target.register(globalRegistry);
       }
     }
   }
@@ -86,9 +87,11 @@ class Quill {
     this.root.setAttribute('data-gramm', false);
     this.scrollingContainer = this.options.scrollingContainer || this.root;
     this.emitter = new Emitter();
-    this.scroll = Parchment.create(this.root, {
-      emitter: this.emitter,
-      whitelist: this.options.formats
+    const ScrollBlot = this.options.registry.query(
+      Parchment.Scroll.blotName
+    );
+    this.scroll = new ScrollBlot(this.options.registry, this.root, {
+      emitter: this.emitter
     });
     this.editor = new Editor(this.scroll);
     this.selection = new Selection(this.scroll, this.emitter);
@@ -175,7 +178,7 @@ class Quill {
       let change = new Delta();
       if (range == null) {
         return change;
-      } else if (Parchment.query(name, Parchment.Scope.BLOCK)) {
+      } else if (this.scroll.query(name, Parchment.Scope.BLOCK)) {
         change = this.editor.formatLine(range.index, range.length, { [name]: value });
       } else if (range.length === 0) {
         this.selection.format(name, value);
@@ -393,10 +396,10 @@ class Quill {
 }
 Quill.DEFAULTS = {
   bounds: null,
-  formats: null,
   modules: {},
   placeholder: '',
   readOnly: false,
+  registry: globalRegistry,
   scrollingContainer: null,
   strict: true,
   theme: 'default'
@@ -576,4 +579,5 @@ function shiftRange(range, index, length, source) {
 }
 
 
-export { expandConfig, overload, Quill as default };
+export { globalRegistry, expandConfig, overload, Quill as default };
+

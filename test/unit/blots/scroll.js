@@ -1,4 +1,3 @@
-import Parchment from 'parchment';
 import Emitter from '../../../core/emitter';
 import Selection, { Range } from '../../../core/selection';
 import Scroll from '../../../blots/scroll';
@@ -26,14 +25,6 @@ describe('Scroll', function() {
       expect(scroll.emitter.emit).toHaveBeenCalledWith(Emitter.events.SCROLL_UPDATE, Emitter.sources.USER, jasmine.any(Array));
       done();
     }, 1);
-  });
-
-  it('whitelist', function() {
-    let scroll = Parchment.create('scroll', { emitter: new Emitter(), whitelist: ['bold'] });
-    scroll.insertAt(0, 'Hello World!');
-    scroll.formatAt(0, 5, 'bold', true);
-    scroll.formatAt(6, 5, 'italic', true);
-    expect(scroll.domNode.firstChild).toEqualHTML('<strong>Hello</strong> World!');
   });
 
   describe('leaf()', function() {
