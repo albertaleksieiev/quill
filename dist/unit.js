@@ -3327,12 +3327,27 @@ var Selection = function () {
       if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
         return;
       }
+
+      var isChromium85unutil87 = window.isChromium85unutil87;
+
       var selection = typeof this.rootDocument.getSelection === 'function' ? this.rootDocument.getSelection() : document.getSelection();
       if (selection == null) return;
       if (startNode != null) {
         if (!this.hasFocus()) this.root.focus();
         var native = (this.getNativeRange() || {}).native;
         if (native == null || force || startNode !== native.startContainer || startOffset !== native.startOffset || endNode !== native.endContainer || endOffset !== native.endOffset) {
+
+          // Kostyl
+          if (isChromium85unutil87 && window.lastKeyDownEvt && window.lastKeyDownEvt.keyCode == 13 && startNode == endNode && native != null && native.startContainer == native.endContainer) {
+            var childs = Array.prototype.slice.call(startNode.parentElement.childNodes);
+            var newNodeOrder = childs.indexOf(startNode);
+            var oldNodeOrder = childs.indexOf(native.startContainer);
+            if (oldNodeOrder > newNodeOrder) {
+              startNode = native.startContainer;
+              endNode = native.endContainer;
+              console.log("isChromium85unutil87: Change order");
+            }
+          }
 
           if (startNode.tagName == "BR") {
             startOffset = [].indexOf.call(startNode.parentNode.childNodes, startNode);
@@ -3345,8 +3360,21 @@ var Selection = function () {
           var range = document.createRange();
           range.setStart(startNode, startOffset);
           range.setEnd(endNode, endOffset);
-          selection.removeAllRanges();
-          selection.addRange(range);
+
+          if (isChromium85unutil87) {
+            var runWithTimeout = function runWithTimeout(selection, range) {
+              setTimeout(function () {
+                selection.removeAllRanges();
+                window.composer.activeEditor.quill.focus(); // Chrome 85-87 require this
+                selection.addRange(range);
+              }, 0);
+            };
+
+            runWithTimeout(selection, range);
+          } else {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
         }
       } else {
         selection.removeAllRanges();
@@ -4849,6 +4877,7 @@ var Keyboard = function (_Module) {
       this.quill.root.addEventListener('keydown', function (evt) {
         // eslint-disable-line complexity
         if (evt.defaultPrevented) return;
+        window.lastKeyDownEvt = evt;
         var which = evt.which || evt.keyCode;
         var bindings = (_this2.bindings[which] || []).filter(function (binding) {
           return Keyboard.match(evt, binding);

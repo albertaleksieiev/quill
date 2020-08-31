@@ -81,6 +81,7 @@ class Keyboard extends Module {
   listen() {
     this.quill.root.addEventListener('keydown', (evt) => { // eslint-disable-line complexity
       if (evt.defaultPrevented) return;
+      window.lastKeyDownEvt = evt;
       let which = evt.which || evt.keyCode;
       let bindings = (this.bindings[which] || []).filter(function(binding) {
         return Keyboard.match(evt, binding);
