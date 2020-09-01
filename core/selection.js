@@ -277,6 +277,7 @@ class Selection {
     if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
       return;
     }
+    let isChromium85unutil87 = window.isChromium85unutil87;
     let selection = document.getSelection();
     if (selection == null) return;
     if (startNode != null) {
@@ -287,6 +288,17 @@ class Selection {
           startOffset !== native.startOffset ||
           endNode !== native.endContainer ||
           endOffset !== native.endOffset) {
+
+        if (isChromium85unutil87 && window.lastKeyDownEvt && window.lastKeyDownEvt.keyCode == 13 && startNode == endNode && native != null && native.startContainer == native.endContainer) {
+          let childs = Array.prototype.slice.call(startNode.parentElement.childNodes)
+          let newNodeOrder = childs.indexOf(startNode)
+          let oldNodeOrder = childs.indexOf(native.startContainer)
+          if (oldNodeOrder > newNodeOrder) {
+            startNode = native.startContainer
+            endNode = native.endContainer
+            console.log("isChromium85unutil87: Change order")
+          }
+        }
 
         if (startNode.tagName == "BR") {
           startOffset = [].indexOf.call(startNode.parentNode.childNodes, startNode);
@@ -299,8 +311,21 @@ class Selection {
         let range = document.createRange();
         range.setStart(startNode, startOffset);
         range.setEnd(endNode, endOffset);
-        selection.removeAllRanges();
-        selection.addRange(range);
+
+        if (isChromium85unutil87) {
+          function runWithTimeout(selection, range) {
+            setTimeout(function() {
+              selection.removeAllRanges();
+              window.editor.quill.focus(); // Chrome 85-87 require this
+              selection.addRange(range);
+            }, 0)
+          }
+          runWithTimeout(selection, range)
+        } else {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
       }
     } else {
       selection.removeAllRanges();
